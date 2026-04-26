@@ -102,7 +102,7 @@
             btn.disabled = true;
             btn.innerText = "Registering...";
             
-            const response = await fetch('/api/register', {
+            const response = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/register', {
                 method: 'POST',
                 body: formData
             });
@@ -133,7 +133,7 @@
             btn.disabled = true;
             btn.innerText = "Sending...";
             
-            const res = await fetch('/api/send-otp', {
+            const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/send-otp', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ mobile })
@@ -166,7 +166,7 @@
         btn.disabled = true;
         btn.innerText = "Verifying...";
 
-        const res = await fetch('/api/verify-login', {
+        const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/verify-login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ mobile, otp })

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludo Platform</title>
+    <style>
+        :root { --primary: #d32f2f; --gold: #ffd700; --dark-bg: #1a1a1a; --card-bg: #2c2c2c; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--dark-bg); color: white; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        
+        .app-container { width: 100%; max-width: 450px; height: 100%; background: var(--card-bg); position: relative; padding: 25px; box-sizing: border-box; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .logo { font-size: 38px; font-weight: 800; color: var(--gold); margin-bottom: 40px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        
+        input { width: 100%; padding: 14px; margin: 12px 0; border-radius: 10px; border: 1px solid #444; background: #333; color: white; font-size: 16px; box-sizing: border-box; transition: 0.3s; }
+        input:focus { border-color: var(--gold); outline: none; background: #444; }
+        
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; transition: 0.3s; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        button:active { transform: scale(0.98); }
+        
+        .link-text { color: var(--gold); font-size: 14px; margin-top: 20px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .link-text:hover { text-decoration: underline; }
+        
+        /* Modal / Popup Styling */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; overflow-y: auto; }
+        .modal-content { padding: 30px 20px; text-align: left; max-width: 400px; margin: auto; }
+        .modal-content h3 { color: var(--gold); border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
+        .file-label { font-size: 13px; color: #bbb; margin-top: 10px; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="loginPage">
+    <div class="logo">Khelo Bhai Ludo</div>
+    
+    <div id="mobileSection">
+        <input type="number" id="loginMobile" placeholder="Enter Mobile Number" maxlength="10">
+        <button id="otpReqBtn" onclick="requestOTP()">Send OTP</button>
+    </div>
+
+    <div id="otpSection" style="display: none;">
+        <p style="color: var(--gold); font-size: 14px;">OTP aapke registered email par bhej diya gaya hai.</p>
+        <input type="number" id="loginOTP" placeholder="Enter 6-Digit OTP" maxlength="6">
+        <button id="verifyBtn" onclick="verifyLogin()">Login</button>
+        <div class="link-text" onclick="location.reload()" style="margin-top: 10px; color: #aaa;">Back to Mobile</div>
+    </div>
+
+    <div class="link-text" onclick="toggleModal('regModal', true)">New User? Register Here</div>
+    <br>
+    <div class="link-text" style="color: #888;">Forgot Password?</div>
+</div>
+
+<div id="regModal" class="modal">
+    <div class="modal-content">
+        <h3>Create New Account</h3>
+        <input type="text" id="regName" placeholder="Full Name (as per Aadhaar)">
+        <input type="email" id="regEmail" placeholder="Email Address">
+        <input type="number" id="regMobile" placeholder="Mobile Number">
+        <input type="text" id="regUser" placeholder="Choose Username">
+        <input type="password" id="regPass" placeholder="Set Password">
+        
+        <span class="file-label">Aadhaar Front Side:</span>
+        <input type="file" id="aadhaarFront" accept="image/*">
+        
+        <span class="file-label">Aadhaar Back Side:</span>
+        <input type="file" id="aadhaarBack" accept="image/*">
+        
+        <button id="regBtn" onclick="submitRegistration()">Save & Register</button>
+        <button style="background:#444; margin-top:10px;" onclick="toggleModal('regModal', false)">Cancel</button>
+    </div>
+</div>
+
+<script>
+    function toggleModal(id, show) {
+        document.getElementById(id).style.display = show ? 'block' : 'none';
+    }
+
+    // REGISTRATION LOGIC
+    async function submitRegistration() {
+        const btn = document.getElementById('regBtn');
+        const frontFile = document.getElementById('aadhaarFront').files[0];
+        const backFile = document.getElementById('aadhaarBack').files[0];
+
+        // Validations
+        if(!document.getElementById('regName').value || !document.getElementById('regEmail').value || !document.getElementById('regMobile').value) {
+            return alert("Kripya saari details bharein!");
+        }
+        if(!frontFile || !backFile) {
+            return alert("Aadhaar card ki dono images upload karna zaroori hai!");
+        }
+
+        const formData = new FormData();
+        formData.append('fullName', document.getElementById('regName').value);
+        formData.append('email', document.getElementById('regEmail').value);
+        formData.append('mobile', document.getElementById('regMobile').value);
+        formData.append('username', document.getElementById('regUser').value);
+        formData.append('password', document.getElementById('regPass').value);
+        formData.append('aadharFront', frontFile);
+        formData.append('aadharBack', backFile);
+
+        try {
+            btn.disabled = true;
+            btn.innerText = "Registering...";
+            
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert("सफलतापूर्वक रजिस्टर हो गया! आपकी प्रोफाइल verify करके admin जल्द आपके अकाउंट को approve करेगा, कृपया mail confirmation के बाद account login करें।");
+                toggleModal('regModal', false);
+            } else {
+                alert("Error: " + result.error);
+            }
+        } catch (error) {
+            alert("Server connection fail. Baad mein koshish karein.");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Save & Register";
+        }
+    }
+
+    // REQUEST OTP LOGIC
+    async function requestOTP() {
+        const mobile = document.getElementById('loginMobile').value;
+        const btn = document.getElementById('otpReqBtn');
+
+        if(mobile.length < 10) return alert("Sahi 10-digit mobile number daalein!");
+
+        try {
+            btn.disabled = true;
+            btn.innerText = "Sending...";
+            
+            const res = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ mobile })
+            });
+
+            const result = await res.json();
+            if(result.success) {
+                document.getElementById('mobileSection').style.display = 'none';
+                document.getElementById('otpSection').style.display = 'block';
+            } else {
+                alert(result.error);
+            }
+        } catch (err) {
+            alert("OTP bhejane mein samasya aayi.");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Send OTP";
+        }
+    }
+
+    // VERIFY LOGIN LOGIC
+    async function verifyLogin() {
+    const mobile = document.getElementById('loginMobile').value;
+    const otp = document.getElementById('loginOTP').value;
+    const btn = document.getElementById('verifyBtn');
+
+    if(!otp) return alert("OTP daalna zaroori hai!");
+
+    try {
+        btn.disabled = true;
+        btn.innerText = "Verifying...";
+
+        const res = await fetch('/api/verify-login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ mobile, otp })
+        });
+
+        const result = await res.json();
+
+        if(result.success) {
+            // Sabse important: User ID ko browser mein save karna
+            localStorage.setItem('userId', result.userId); 
+
+            // Check karein ki Terms accepted hain ya nahi
+            if(result.termsAccepted === true) {
+                // Agar pehle hi accept kar chuka hai toh seedha Dashboard
+                window.location.href = "/dashboard.html";
+            } else {
+                // Agar naya user hai toh pehle Terms and Rules dikhao
+                window.location.href = "/term.html";
+            }
+        } else {
+            alert(result.error);
+        }
+    } catch (err) {
+        alert("Login fail ho gaya. Server check karein.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Login";
+    }
+}
+</script>
+</body>
+</html>

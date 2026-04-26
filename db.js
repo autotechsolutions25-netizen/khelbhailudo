@@ -4,16 +4,16 @@ require('dotenv').config();
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: false // <--- Ye line sabse zaroori hai cloud connection ke liye
+        rejectUnauthorized: false // Cloud database ke liye ye mandatory hai
     }
 });
 
-// Connection check karne ke liye (Logs mein dikhega)
+// Ye check karne ke liye ki connect hua ya nahi
 pool.connect((err, client, release) => {
     if (err) {
-        return console.error('❌ Database Connection Error:', err.stack);
+        return console.error('❌ Connection Failed at db.js:', err.stack);
     }
-    console.log('✅ Connected to Supabase Database Successfully!');
+    console.log('✅ Connected to Supabase Successfully!');
     release();
 });
 

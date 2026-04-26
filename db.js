@@ -4,7 +4,7 @@ require('dotenv').config();
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: false // Ye line Cloud (Supabase) ke liye mandatory hai
+        rejectUnauthorized: false // Cloud (Supabase) ke liye ye sabse zaroori hai
     }
 });
 

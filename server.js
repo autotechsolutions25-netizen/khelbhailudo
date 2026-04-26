@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors'); // CORS ko import kiya
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
@@ -7,27 +8,29 @@ const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
+
+// 1. CORS Configuration (Ise sabse upar hona chahiye)
+app.use(cors({
+    origin: 'https://autotechsolutions25-netizen.github.io', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type']
+}));
+
+// 2. Body Parsers
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 3. Static Folders
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
 // Ensure uploads folder exists
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 
-// Database Connection
+// 4. Database Connection (db.js file se)
 const pool = require('./db');
 
-const cors = require('cors'); // 1. CORS library ko import karein
-
-// 2. Isse allow karein (Ise app = express() ke turant baad likhna)
-app.use(cors({
-    origin: 'https://autotechsolutions25-netizen.github.io', // Sirf aapki website allow hogi
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type']
-}));
-
 // --- DATABASE TABLES INITIALIZATION ---
-// Yeh block check karega ki tables hain ya nahi, nahi toh bana dega
 const initDB = async () => {
     try {
         await pool.query(`
@@ -86,9 +89,9 @@ const initDB = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("Database Tables Ready.");
+        console.log("✅ Database Tables Ready.");
     } catch (err) {
-        console.error("Database Init Error:", err.message);
+        console.error("❌ Database Init Error:", err.message);
     }
 };
 initDB();
@@ -249,7 +252,8 @@ app.post('/api/pay/verify', async (req, res) => {
 app.post('/api/withdraw/request', async (req, res) => {
     const { userId, amount } = req.body;
     try {
-        const user = (await pool.query('SELECT earning_balance FROM users WHERE id = $1', [userId])).rows[0];
+        const userResult = await pool.query('SELECT earning_balance FROM users WHERE id = $1', [userId]);
+        const user = userResult.rows[0];
         if (parseFloat(user.earning_balance) < parseFloat(amount)) return res.status(400).json({ message: "Low Balance" });
 
         await pool.query('BEGIN');
@@ -275,10 +279,13 @@ app.get('/api/admin/master-stats', async (req, res) => {
 
 app.get('/api/admin/withdrawals/pending', async (req, res) => {
     try {
-        const result = await pool.query('SELECT w.*, u.username, u.upi_id FROM withdrawals w JOIN users u ON w.user_id = u.id WHERE w.status = "pending"');
+        const result = await pool.query('SELECT w.*, u.username, u.upi_id FROM withdrawals w JOIN users u ON w.user_id = u.id WHERE w.status = \'pending\'');
         res.json(result.rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port: ${PORT}`));
+// 8. Server Listen
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server is live on port: ${PORT}`);
+});

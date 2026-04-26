@@ -17,6 +17,15 @@ if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 // Database Connection
 const pool = require('./db');
 
+const cors = require('cors'); // 1. CORS library ko import karein
+
+// 2. Isse allow karein (Ise app = express() ke turant baad likhna)
+app.use(cors({
+    origin: 'https://autotechsolutions25-netizen.github.io', // Sirf aapki website allow hogi
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type']
+}));
+
 // --- DATABASE TABLES INITIALIZATION ---
 // Yeh block check karega ki tables hain ya nahi, nahi toh bana dega
 const initDB = async () => {
@@ -869,4 +878,4 @@ app.post('/api/withdraw/request', async (req, res) => {
 
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port:${PORT}`));
+app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));

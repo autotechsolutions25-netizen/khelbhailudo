@@ -126,33 +126,57 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 
 // 2. OTP Store & Login System
 let otpStore = {}; 
+
 app.post('/api/send-otp', async (req, res) => {
     const { mobile } = req.body;
+    console.log("OTP Request for:", mobile); // Debugging ke liye
+
     try {
-        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1 AND is_verified = true', [mobile]);
+        // 1. Check User in DB
+        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
+        
         if (userRes.rows.length === 0) {
-            return res.status(404).json({ error: "User not found or not approved by admin!" });
+            return res.status(404).json({ error: "Mobile number registered nahi hai!" });
         }
+
         const user = userRes.rows[0];
-        const otp = Math.floor(100000 + Math.random() * 900000); 
+
+        if (!user.is_verified) {
+            return res.status(403).json({ error: "Admin ne abhi aapko approve nahi kiya hai!" });
+        }
+
+        // 2. Get Admin Settings
+        const settingsRes = await pool.query('SELECT * FROM admin_settings LIMIT 1');
+        if (settingsRes.rows.length === 0) {
+            return res.status(500).json({ error: "Backend settings missing! admin_settings table check karein." });
+        }
+        
+        const settings = settingsRes.rows[0];
+        const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        const settings = (await pool.query('SELECT * FROM admin_settings LIMIT 1')).rows[0];
-        if (settings) {
-            let transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: { user: settings.admin_email, pass: settings.smtp_password }
-            });
-            await transporter.sendMail({
-                from: settings.admin_email,
-                to: user.email,
-                subject: 'Login OTP - Ludo Platform',
-                text: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}`
-            });
-            res.json({ success: true, message: "OTP sent to your registered email!" });
-        }
+        // 3. Send Email
+        let transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { 
+                user: settings.admin_email, 
+                pass: settings.smtp_password.replace(/\s+/g, '') // Spaces hata dega agar galti se reh gaye hon
+            }
+        });
+
+        await transporter.sendMail({
+            from: `"Khel Bhai Ludo" <${settings.admin_email}>`,
+            to: user.email,
+            subject: 'Login OTP - Khel Bhai Ludo',
+            text: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}. Ye OTP sirf 5 minute ke liye valid hai.`
+        });
+
+        console.log(`✅ OTP ${otp} sent to ${user.email}`);
+        res.json({ success: true, message: "OTP aapke registered email par bhej diya gaya hai!" });
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("❌ OTP Route Error:", err.message);
+        res.status(500).json({ error: "Server Error: " + err.message });
     }
 });
 

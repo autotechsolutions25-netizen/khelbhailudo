@@ -157,11 +157,16 @@ app.post('/api/send-otp', async (req, res) => {
 
         // 3. Send Email
         let transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // Port 465 ke liye true zaroori hai
             auth: { 
                 user: settings.admin_email, 
-                pass: settings.smtp_password.replace(/\s+/g, '') // Spaces hata dega agar galti se reh gaye hon
-            }
+                pass: settings.smtp_password.replace(/\s+/g, '') 
+            },
+            connectionTimeout: 10000, // 10 seconds wait karega
+            greetingTimeout: 10000,
+            socketTimeout: 10000
         });
 
         await transporter.sendMail({

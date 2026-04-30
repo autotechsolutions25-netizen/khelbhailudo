@@ -157,17 +157,17 @@ app.post('/api/send-otp', async (req, res) => {
 
         // 3. Send Email
         let transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true, // Port 465 ke liye true zaroori hai
-            auth: { 
-                user: settings.admin_email, 
-                pass: settings.smtp_password.replace(/\s+/g, '') 
-            },
-            connectionTimeout: 10000, // 10 seconds wait karega
-            greetingTimeout: 10000,
-            socketTimeout: 10000
-        });
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Port 587 ke liye false hona zaroori hai
+    auth: { 
+        user: settings.admin_email, 
+        pass: settings.smtp_password.replace(/\s+/g, '') // Spaces hata dega
+    },
+    tls: {
+        rejectUnauthorized: false // Ye line connection timeout ko rokne mein help karti hai
+    }
+});
 
         await transporter.sendMail({
             from: `"Khel Bhai Ludo" <${settings.admin_email}>`,

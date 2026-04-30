@@ -158,14 +158,15 @@ app.post('/api/send-otp', async (req, res) => {
         // 3. Send Email
 let transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 2587, // Try 465 again with a different 'secure' logic
-    secure: false, 
+    port: 587,
+    secure: false, // 587 ke liye false hi rahega
     auth: { 
         user: settings.admin_email, 
         pass: settings.smtp_password.replace(/\s+/g, '') 
     },
-    debug: true, // Ye logs mein zyada detail dikhayega
-    logger: true // Ye bhi logs mein detail dikhayega
+    tls: {
+        rejectUnauthorized: false // Ye line timeout se bachati hai
+    }
 });
 
         await transporter.sendMail({

@@ -156,17 +156,18 @@ app.post('/api/send-otp', async (req, res) => {
         otpStore[mobile] = otp;
 
         // 3. Send Email
-        let transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Port 587 ke liye false hona zaroori hai
+let transporter = nodemailer.createTransport({
+    service: 'gmail', // Direct service name use karein
     auth: { 
         user: settings.admin_email, 
-        pass: settings.smtp_password.replace(/\s+/g, '') // Spaces hata dega
+        pass: settings.smtp_password.replace(/\s+/g, '') 
     },
-    tls: {
-        rejectUnauthorized: false // Ye line connection timeout ko rokne mein help karti hai
-    }
+    pool: true, // Connection pool use karega
+    maxConnections: 1, // Free tier ke liye best hai
+    maxMessages: Infinity,
+    connectionTimeout: 20000, // Timeout limit badha di hai (20 seconds)
+    greetingTimeout: 20000,
+    socketTimeout: 20000
 });
 
         await transporter.sendMail({

@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const nodemailer = require('nodemailer');
+const SibApiV3Sdk = require('sib-api-v3-sdk'); // Brevo SDK setup
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -28,6 +28,14 @@ if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 
 // 4. Database Connection
 const pool = require('./db');
+
+// --- BREVO (SENDINBLUE) API CONFIGURATION ---
+const defaultClient = SibApiV3Sdk.ApiClient.instance;
+const apiKey = defaultClient.authentications['api-key'];
+// Aapka Brevo API Key yahan set kar diya hai
+apiKey.apiKey = 'xsmtpsib-593c2ec7578fb595cfc8e4d1d2014cfa5a4585ba18d09371a5acf8ed44fe5824-aJm3y67SODMDousz'; 
+
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
 // --- DATABASE TABLES INITIALIZATION ---
 const initDB = async () => {
@@ -103,20 +111,8 @@ const upload = multer({ storage });
 
 // --- ROUTES ---
 
-// NEW: API to Update Admin Settings
-app.post('/api/admin/update-settings', async (req, res) => {
-    const { email, smtp_password } = req.body;
-    try {
-        await pool.query('DELETE FROM admin_settings');
-        await pool.query(
-            'INSERT INTO admin_settings (admin_email, smtp_password) VALUES ($1, $2)',
-            [email, smtp_password.replace(/\s+/g, '')]
-        );
-        res.json({ success: true, message: "SMTP Settings updated!" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// OTP Store
+let otpStore = {}; 
 
 // 1. User Registration
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
@@ -137,45 +133,38 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
     }
 });
 
-// 2. OTP Store & Login System
-const axios = require('axios'); // File ke sabse upar ise add karein
-
-// --- 2. OTP Store & Login System (Formspree Version) ---
+// 2. SEND OTP via BREVO API (100% Timeout Fix)
 app.post('/api/send-otp', async (req, res) => {
     const { mobile } = req.body;
-    console.log("OTP Request via Formspree for:", mobile);
+    console.log("OTP Request via Brevo for:", mobile);
 
     try {
-        // 1. Database mein user check karein
         const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
         if (userRes.rows.length === 0) return res.status(404).json({ error: "Mobile number registered nahi hai!" });
 
         const user = userRes.rows[0];
         if (!user.is_verified) return res.status(403).json({ error: "Admin approval pending!" });
 
-        // 2. OTP Generate karein
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        // 3. FORMSPREE API CALL
-        // Note: Yahan 'xyzaabbcc' ki jagah apni Formspree ID daalein
-        const formspreeEndpoint = "https://formspree.io/f/xbdwjvqb"; 
+        // Brevo Email Logic
+        let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+        sendSmtpEmail.subject = "Login OTP - Khel Bhai Ludo";
+        sendSmtpEmail.htmlContent = `<html><body><h1>Namaste ${user.full_name}</h1><p>Aapka login OTP hai: <b>${otp}</b>. Ye OTP sirf 5 minute ke liye valid hai.</p></body></html>`;
+        sendSmtpEmail.sender = { "name": "Khel Bhai Ludo", "email": "autotechsolutions25@gmail.com" };
+        sendSmtpEmail.to = [{ "email": user.email, "name": user.full_name }];
 
-        await axios.post(formspreeEndpoint, {
-            email: user.email, // Formspree is email par notification bhejega
-            _subject: "Login OTP - Khel Bhai Ludo",
-            message: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}.`
-        });
+        await apiInstance.sendTransacEmail(sendSmtpEmail);
 
-        console.log(`✅ OTP ${otp} sent via Formspree to ${user.email}`);
-        res.json({ success: true, message: "OTP bhej diya gaya hai! Email check karein." });
+        console.log(`✅ OTP ${otp} sent via Brevo to ${user.email}`);
+        res.json({ success: true, message: "OTP aapke email par bhej diya gaya hai!" });
 
     } catch (err) {
-        console.error("❌ Formspree Error:", err.message);
+        console.error("❌ Brevo Error:", err.message);
         res.status(500).json({ error: "OTP sending failed: " + err.message });
     }
 });
-
 
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;
@@ -188,9 +177,7 @@ app.post('/api/verify-login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
 
-// 3. Battles, 4. KYC, 5. Razorpay, 6. Withdrawals logic remains same...
-// (Keeping all existing endpoints you provided)
-
+// 3. Battles
 app.post('/api/battles/create', async (req, res) => {
     const { userId, amount } = req.body;
     try {
@@ -214,6 +201,7 @@ app.post('/api/user/submit-kyc', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 4. Payments (Razorpay)
 const Razorpay = require('razorpay');
 const rzp = new Razorpay({ key_id: 'rzp_test_SflXxOSDMFAolF', key_secret: 'N6Ve21b0cUAJZKnaP7ozPiu8' });
 
@@ -225,6 +213,7 @@ app.post('/api/pay/create-order', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 5. Withdrawals
 app.post('/api/withdraw/request', async (req, res) => {
     const { userId, amount } = req.body;
     try {

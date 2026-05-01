@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const SibApiV3Sdk = require('sib-api-v3-sdk'); // Brevo SDK setup
+const SibApiV3Sdk = require('sib-api-v3-sdk'); 
+const axios = require('axios'); // Fast2SMS ke liye zaroori
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -29,12 +30,10 @@ if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 // 4. Database Connection
 const pool = require('./db');
 
-// --- BREVO (SENDINBLUE) API CONFIGURATION ---
+// --- BREVO CONFIG (Optional if using Fast2SMS) ---
 const defaultClient = SibApiV3Sdk.ApiClient.instance;
 const apiKey = defaultClient.authentications['api-key'];
-// Aapka Brevo API Key yahan set kar diya hai
 apiKey.apiKey = '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'; 
-
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
 // --- DATABASE TABLES INITIALIZATION ---
@@ -109,10 +108,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// --- ROUTES ---
-
-// OTP Store
+// --- OTP Store (EK BAAR DECLARE KIYA HAI) ---
 let otpStore = {}; 
+
+// --- ROUTES ---
 
 // 1. User Registration
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
@@ -133,18 +132,12 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
     }
 });
 
-// 2. SEND OTP via BREVO API (100% Timeout Fix)
-const axios = require('axios'); // Sabse upar add karein
-
-// --- OTP Store ---
-let otpStore = {}; 
-
+// 2. SEND OTP via FAST2SMS
 app.post('/api/send-otp', async (req, res) => {
     const { mobile } = req.body;
     console.log("SMS OTP Request for:", mobile);
 
     try {
-        // 1. Database mein user check karein
         const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
         if (userRes.rows.length === 0) {
             return res.status(404).json({ error: "Mobile number registered nahi hai!" });
@@ -155,14 +148,12 @@ app.post('/api/send-otp', async (req, res) => {
             return res.status(403).json({ error: "Admin ne abhi aapko approve nahi kiya hai!" });
         }
 
-        // 2. 6-digit OTP Generate karein
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        // 3. FAST2SMS API CALL
         const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
             params: {
-                "authorization": "CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD", // Apni API Key yahan daalein
+                "authorization": "CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD", 
                 "variables_values": otp,
                 "route": "otp",
                 "numbers": mobile

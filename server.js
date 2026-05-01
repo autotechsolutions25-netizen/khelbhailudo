@@ -145,25 +145,25 @@ app.post('/api/send-otp', async (req, res) => {
 });
 
 // NEW ROUTE: Firebase OTP Verification Check
-// Jab Frontend (Firebase) OTP verify kar lega, tab ye call hoga
 app.post('/api/verify-login-firebase', async (req, res) => {
     let { mobile } = req.body;
     try {
-        // Mobile cleaning (Sirf 10 digit)
+        // Mobile cleaning: Agar +91 hai toh hata do, sirf aakhri 10 digits lo
         mobile = mobile.toString().replace(/\D/g, ""); 
         if (mobile.length > 10) mobile = mobile.slice(-10);
+
+        console.log("Checking DB for cleaned mobile:", mobile);
 
         const userRes = await pool.query('SELECT id, terms_accepted, is_verified FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
         
         if (userRes.rows.length === 0) {
-            return res.status(404).json({ success: false, error: "Aap registered nahi hain. Pehle Register karein!" });
+            return res.status(404).json({ success: false, error: "Aap registered nahi hain!" });
         }
 
         const user = userRes.rows[0];
         
-        // Safety Check: Kya admin ne approve kiya hai?
         if (!user.is_verified) {
-            return res.status(403).json({ success: false, error: "Aapka account admin approval ke liye pending hai!" });
+            return res.status(403).json({ success: false, error: "Account approval pending hai!" });
         }
 
         res.json({ 

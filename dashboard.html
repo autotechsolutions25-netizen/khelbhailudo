@@ -27,7 +27,7 @@
         .stat-val { font-size: 13px; font-weight: bold; color: var(--accent); }
         .add-btn { background: var(--green); color: white; border: none; border-radius: 4px; padding: 0 6px; font-size: 12px; margin-left: 5px; cursor: pointer; }
 
-        /* Withdrawal Popup (New) */
+        /* Modal / Popups */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; justify-content: center; align-items: center; }
         .modal-content { background: var(--card-bg); width: 90%; max-width: 400px; border-radius: 20px; padding: 25px; text-align: center; border: 1px solid var(--primary); position: relative; }
         .close-modal { position: absolute; top: 15px; right: 15px; font-size: 20px; color: #94a3b8; cursor: pointer; }
@@ -35,7 +35,6 @@
         .withdraw-input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin-top: 10px; font-size: 16px; text-align: center; }
         .btn-proceed { background: linear-gradient(to right, var(--green), #15803d); color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; margin-top: 15px; cursor: pointer; }
         
-        /* PhonePe Style Success Popup */
         #successPopup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 4000; flex-direction: column; align-items: center; justify-content: center; color: #0f172a; }
         .success-circle { width: 100px; height: 100px; background: #5f259f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 50px; margin-bottom: 20px; animation: scaleUp 0.5s ease-out; }
         @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
@@ -46,6 +45,7 @@
         .history-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin-bottom: 12px; border-left: 4px solid var(--primary); }
         .history-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
         .status-win { color: var(--green); font-weight: bold; }
+        .status-lost { color: #ef4444; font-weight: bold; }
         .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 15px; }
         .game-card { background: var(--card-bg); border-radius: 12px; border: 1px solid #334155; overflow: hidden; }
         .game-img { width: 100%; height: 100px; object-fit: cover; }
@@ -61,36 +61,33 @@
 
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
+    <!-- Withdrawal Modal -->
     <div id="withdrawModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeWithdrawModal()">&times;</span>
             <h3 style="margin-top:0;">Withdraw Winning</h3>
-            <p style="font-size: 12px; color: #94a3b8;">Aap apna winning amount bank ya UPI mein le sakte hain.</p>
-            
             <div class="win-token-display">
                 <span style="font-size: 12px; color: #94a3b8;">Total Winning Balance</span><br>
                 <span style="font-size: 24px; font-weight: bold; color: var(--accent);">₹<span id="popWinBal">0</span></span>
             </div>
-
             <div style="text-align: left;">
                 <label style="font-size: 12px; color: var(--primary);">Enter Amount to Withdraw</label>
                 <input type="number" id="withAmt" class="withdraw-input" placeholder="Min. ₹100">
             </div>
-
             <button class="btn-proceed" onclick="proceedWithdraw()">PROCEED WITHDRAWAL</button>
             <p style="font-size: 10px; color: #ef4444; margin-top: 10px;">*5% Admin commission will be deducted.</p>
         </div>
     </div>
 
+    <!-- Success Popup -->
     <div id="successPopup">
         <div class="success-circle"><i class="fas fa-check"></i></div>
         <h2 style="margin:0;">₹<span id="successAmt">0</span></h2>
         <p style="color: #6b7280; font-weight: 500;">Withdrawal Request Sent!</p>
-        <div style="width: 80%; height: 1px; background: #e5e7eb; margin: 20px 0;"></div>
-        <p style="font-size: 14px; text-align:center; padding: 0 20px;">Amount will be credited to your account after Admin approval.</p>
         <button onclick="location.reload()" style="margin-top:30px; background:#5f259f; color:white; border:none; padding:12px 40px; border-radius:25px; font-weight:bold;">DONE</button>
     </div>
 
+    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div style="width: 60px; height: 60px; background: white; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: var(--dark);">
@@ -104,6 +101,7 @@
         <div class="menu-item" style="color: #ef4444;" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
     </div>
 
+    <!-- Navbar -->
     <div class="navbar">
         <div class="nav-left">
             <i class="fas fa-bars menu-icon" onclick="toggleMenu()"></i>
@@ -115,7 +113,7 @@
         <div class="wallet-stats">
             <div class="stat-box">
                 <span class="stat-label">Wallet</span>
-                <span class="stat-val">₹<span id="cashBal">0</span><button class="add-btn" onclick="location.href='/add-cash.html'">+</button></span>
+                <span class="stat-val">₹<span id="cashBal">0</span><button class="add-btn" onclick="location.href='add-cash.html'">+</button></span>
             </div>
             <div class="stat-box" style="border-color: var(--green);" onclick="openWithdrawModal()">
                 <span class="stat-label">Win</span>
@@ -132,7 +130,7 @@
         
         <h3 style="margin-left: 15px; font-size: 16px;">Play & Win</h3>
         <div class="game-grid">
-            <div class="game-card" onclick="location.href='/ludo.html'">
+            <div class="game-card" onclick="location.href='ludo.html'">
                 <img src="https://www.shutterstock.com/image-vector/ludo-board-game-top-view-600nw-1934371583.jpg" class="game-img">
                 <button class="game-btn">PLAY LUDO</button>
             </div>
@@ -143,6 +141,7 @@
         </div>
     </div>
 
+    <!-- Sections -->
     <div id="profileSection" class="page-section">
         <div class="section-header">
             <i class="fas fa-arrow-left" onclick="closeSections()"></i>
@@ -156,9 +155,8 @@
             <div id="kycStatusContainer"></div>
             <div class="tnc-box">
                 <b>Term & Conditions:</b><br>
-                1. Assam, Odisha, Telangana, Nagaland aur Sikkim ke users game allow nahi hain.<br>
-                2. Ek KYC se sirf ek hi account link ho sakta hai.<br>
-                3. Withdrawal ke liye Bank Details aur KYC ka same hona anivarya hai.
+                1. Assam, Odisha, Telangana, Nagaland aur Sikkim ke users allowed nahi hain.<br>
+                2. Ek KYC se sirf ek account link ho sakta hai.
             </div>
         </div>
     </div>
@@ -180,6 +178,7 @@
     </div>
 
     <script>
+        const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
         const userId = localStorage.getItem('userId');
         let currentWinningBal = 0;
         let kycStatus = 'pending';
@@ -201,174 +200,105 @@
             document.querySelectorAll('.page-section').forEach(s => s.style.display = 'none');
         }
 
-        // --- NEW WITHDRAWAL LOGIC ---
-        function openWithdrawModal() {
-            if(kycStatus !== 'approved') {
-                alert("Withdrawal ke liye pehle KYC approve karwana zaroori hai. Profile mein jayein.");
-                return;
-            }
-            document.getElementById('popWinBal').innerText = currentWinningBal;
-            document.getElementById('withdrawModal').style.display = 'flex';
-        }
-
-        function closeWithdrawModal() {
-            document.getElementById('withdrawModal').style.display = 'none';
-        }
-
-        async function proceedWithdraw() {
-    const userId = localStorage.getItem('userId'); // Re-verify userId here
-    const amountInput = document.getElementById('withAmt').value;
-    const amount = parseFloat(amountInput);
-
-    if (!userId || userId === "undefined") {
-        alert("Session expire ho gaya hai. Kripya login dobara karein.");
-        window.location.href = "/index.html";
-        return;
-    }
-
-    if(!amount || amount < 100) {
-        alert("Minimum withdrawal ₹100 hai.");
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/withdraw/request', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                userId: parseInt(userId), // Ensure it's a number
-                amount: amount 
-            })
-        });
-        
-        const data = await res.json();
-        
-        if(data.success) {
-            document.getElementById('withdrawModal').style.display = 'none';
-            document.getElementById('successAmt').innerText = amount;
-            document.getElementById('successPopup').style.display = 'flex';
-        } else {
-            alert(data.message || "Error occurred");
-        }
-    } catch (err) {
-        console.error("Fetch Error:", err);
-        alert("Server se connection nahi ho paya.");
-    }
-}
-
         window.onload = async () => {
-            if(!userId) { window.location.href = "/index.html"; return; }
+            if(!userId || userId === "undefined") { window.location.href = "index.html"; return; }
             fetchProfile();
         };
 
         async function fetchProfile() {
-            const res = await fetch(`/api/user/profile/${userId}`);
-            const data = await res.json();
-            
-            document.getElementById('userName').innerText = data.username || "User";
-            document.getElementById('sideName').innerText = data.username || "User";
-            document.getElementById('cashBal').innerText = data.wallet_balance ?? 0;
-            document.getElementById('earnBal').innerText = data.earning_balance ?? 0;
-            
-            currentWinningBal = data.earning_balance ?? 0;
-            kycStatus = data.kyc_status;
+            try {
+                // Route changed to match standard /api/user/details or /api/user/profile
+                const res = await fetch(`${API_BASE}/user/details/${userId}`);
+                const data = await res.json();
+                
+                document.getElementById('userName').innerText = data.full_name || data.username || "User";
+                document.getElementById('sideName').innerText = data.full_name || data.username || "User";
+                document.getElementById('cashBal').innerText = data.wallet_balance ?? 0;
+                document.getElementById('earnBal').innerText = data.earning_balance ?? 0;
+                
+                currentWinningBal = data.earning_balance ?? 0;
+                kycStatus = data.kyc_status;
 
-            document.getElementById('profUser').innerText = data.username || "N/A";
-            document.getElementById('profMob').innerText = data.mobile_no || "N/A";
-            document.getElementById('profDate').innerText = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
+                document.getElementById('profUser').innerText = data.username || "N/A";
+                document.getElementById('profMob').innerText = data.mobile_no || "N/A";
+                document.getElementById('profDate').innerText = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
 
-            const kycContainer = document.getElementById('kycStatusContainer');
-            if(kycStatus === 'approved') {
-                kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified Successfully!</b></div>`;
-            } else if (kycStatus === 'pending') {
-                kycContainer.innerHTML = `<div class="kyc-status-box kyc-pending"><i class="fas fa-clock"></i> <b>KYC Under Review</b></div>`;
-            } else if (kycStatus === 'rejected') {
-                kycContainer.innerHTML = `<div class="kyc-status-box kyc-rejected"><i class="fas fa-times-circle"></i> <b>KYC Rejected</b><br>Reason: ${data.kyc_reject_reason || 'Check details'}<br><button class="game-btn" onclick="location.href='/kyc.html'">Try Again</button></div>`;
-            } else {
-                kycContainer.innerHTML = `<button class="game-btn" style="background: var(--secondary);" onclick="location.href='/kyc.html'">Update KYC / Bank Details</button>`;
+                const kycContainer = document.getElementById('kycStatusContainer');
+                if(kycStatus === 'approved') {
+                    kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified!</b></div>`;
+                } else if (kycStatus === 'pending') {
+                    kycContainer.innerHTML = `<div class="kyc-status-box kyc-pending"><i class="fas fa-clock"></i> <b>KYC Under Review</b></div>`;
+                } else {
+                    kycContainer.innerHTML = `<button class="game-btn" onclick="location.href='kyc.html'">Update KYC / Bank Details</button>`;
+                }
+            } catch (err) {
+                console.error("Profile Fetch Error:", err);
             }
+        }
+
+        async function proceedWithdraw() {
+            const amountInput = document.getElementById('withAmt').value;
+            const amount = parseFloat(amountInput);
+
+            if(!amount || amount < 100) { alert("Min withdrawal ₹100"); return; }
+
+            try {
+                const res = await fetch(`${API_BASE}/withdraw/request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: parseInt(userId), amount: amount })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('withdrawModal').style.display = 'none';
+                    document.getElementById('successAmt').innerText = amount;
+                    document.getElementById('successPopup').style.display = 'flex';
+                } else { alert(data.error || "Error"); }
+            } catch (err) { alert("Server connection failed"); }
         }
 
         async function fetchGameHistory() {
-            const res = await fetch(`/api/user/game-history/${userId}`);
-            const data = await res.json();
-            const container = document.getElementById('gameList');
-            container.innerHTML = data.map(g => `
-                <div class="history-card">
-                    <div class="history-row"><span>Battle ID: #${g.id}</span> <span>${new Date(g.created_at).toLocaleDateString()}</span></div>
-                    <div class="history-row"><span>Amount: ₹${g.amount}</span> <span class="${g.winner_id == userId ? 'status-win' : 'status-lost'}">${g.winner_id == userId ? 'WON' : 'LOST'}</span></div>
-                </div>
-            `).join('') || '<p>No games played yet.</p>';
+            try {
+                const res = await fetch(`${API_BASE}/user/game-history/${userId}`);
+                const data = await res.json();
+                const container = document.getElementById('gameList');
+                container.innerHTML = data.map(g => `
+                    <div class="history-card">
+                        <div class="history-row"><span>Battle ID: #${g.id}</span> <span>${new Date(g.created_at).toLocaleDateString()}</span></div>
+                        <div class="history-row"><span>Amount: ₹${g.amount}</span> <span class="${g.winner_id == userId ? 'status-win' : 'status-lost'}">${g.winner_id == userId ? 'WON' : 'LOST'}</span></div>
+                    </div>
+                `).join('') || '<p>No games played yet.</p>';
+            } catch(e) { console.error(e); }
         }
 
         async function fetchTransactions() {
-    const container = document.getElementById('transList');
-    try {
-        const res = await fetch(`/api/user/transactions/${userId}`);
-        const data = await res.json();
-        
-        if (!data || data.length === 0) {
-            container.innerHTML = '<p style="text-align:center; margin-top:50px; color:#94a3b8;">No transactions found.</p>';
-            return;
+            const container = document.getElementById('transList');
+            try {
+                const res = await fetch(`${API_BASE}/user/transactions/${userId}`);
+                const data = await res.json();
+                container.innerHTML = data.map(t => `
+                    <div class="history-card" style="border-left-color: ${t.type === 'deposit' ? 'var(--green)' : 'var(--primary)'}">
+                        <div class="history-row">
+                            <span style="font-weight:bold;">${t.type === 'deposit' ? 'CASH ADDED' : 'WITHDRAWAL'}</span>
+                            <span style="font-size:10px;">${new Date(t.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="history-row"><span>₹${parseFloat(t.amount).toFixed(2)}</span> <span>${t.status.toUpperCase()}</span></div>
+                    </div>
+                `).join('') || '<p>No transactions found.</p>';
+            } catch (err) { console.error(err); }
         }
 
-        container.innerHTML = data.map(t => {
-            let statusColor = '#94a3b8';
-            let statusText = t.status ? t.status.toUpperCase() : 'SUCCESS';
-            let amountToShow = parseFloat(t.amount);
-            let commissionText = "";
+        function openWithdrawModal() {
+            if(kycStatus !== 'approved') { alert("KYC approve karwana zaroori hai."); return; }
+            document.getElementById('popWinBal').innerText = currentWinningBal;
+            document.getElementById('withdrawModal').style.display = 'flex';
+        }
 
-            // Agar withdrawal hai aur 'paid' ho chuka hai, toh commission deduct karke dikhao
-            if (t.type === 'withdrawal') {
-                const totalAmt = parseFloat(t.amount);
-                const commission = totalAmt * 0.05; // 5% Commission
-                const netAmount = totalAmt - commission;
-                
-                // User ko final pay hone wala amount main dikhayenge
-                amountToShow = netAmount;
-                commissionText = `<div style="font-size:10px; color:#94a3b8;">(₹${totalAmt} - 5% Admin Fee)</div>`;
-
-                if (t.status === 'pending') statusColor = 'var(--accent)';
-                else if (t.status === 'paid' || t.status === 'approved') statusColor = 'var(--green)';
-                else if (t.status === 'rejected') {
-                    statusColor = '#ef4444';
-                    amountToShow = totalAmt; // Reject mein pura wapis dikhao
-                    commissionText = "";
-                }
-            }
-
-            const isDeposit = t.type === 'deposit';
-            const borderCol = isDeposit ? 'var(--green)' : (t.status === 'rejected' ? '#ef4444' : 'var(--primary)');
-
-            return `
-                <div class="history-card" style="border-left-color: ${borderCol}; margin-bottom:15px;">
-                    <div class="history-row">
-                        <span style="font-weight:bold; font-size:12px; color:${isDeposit ? 'var(--green)' : 'var(--primary)'}">
-                            ${isDeposit ? 'CASH ADDED' : 'WITHDRAWAL'}
-                        </span>
-                        <span style="font-size:10px; color:#94a3b8;">${new Date(t.created_at).toLocaleString()}</span>
-                    </div>
-                    <div class="history-row" style="margin-top:10px;">
-                        <div>
-                            <span style="font-size:18px; font-weight:bold;">₹${amountToShow.toFixed(2)}</span>
-                            ${commissionText}
-                        </div>
-                        <span style="color:${statusColor}; font-weight:bold; font-size:12px;">
-                            ${statusText}
-                        </span>
-                    </div>
-                    ${t.reject_reason ? `<div style="font-size:10px; color:#ef4444; margin-top:5px; border-top:1px solid #334155; padding-top:5px;">Reason: ${t.reject_reason}</div>` : ''}
-                </div>
-            `;
-        }).join('');
-    } catch (err) {
-        container.innerHTML = '<p style="color:red; text-align:center;">Data load error.</p>';
-    }
-}
+        function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
 
         function logout() {
             localStorage.clear();
-            window.location.href = "/index.html";
+            window.location.href = "index.html";
         }
     </script>
 </body>

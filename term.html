@@ -17,21 +17,11 @@
         .btn-go { width: 100%; padding: 15px; background: #d32f2f; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; opacity: 0.5; }
         .btn-go.active { opacity: 1; background: #28a745; }
         @media (max-width: 480px) {
-    body {
-        padding: 15px;
-    }
-    h2 {
-        font-size: 20px;
-    }
-    .terms-box {
-        padding: 15px;
-        font-size: 13px;
-    }
-    .btn-go {
-        padding: 12px;
-        font-size: 14px;
-    }
-}
+            body { padding: 15px; }
+            h2 { font-size: 20px; }
+            .terms-box { padding: 15px; font-size: 13px; }
+            .btn-go { padding: 12px; font-size: 14px; }
+        }
     </style>
 </head>
 <body>
@@ -67,20 +57,36 @@
     }
 
     async function acceptTerms() {
-        const userId = localStorage.getItem('userId'); // Login ke waqt save kiya gaya ID
+        const userId = localStorage.getItem('userId');
+        const btn = document.getElementById('goBtn');
+
+        if(!userId) return alert("User session not found. Please login again.");
         
         try {
-            const res = await fetch('/api/accept-terms', {
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            // FIX: GitHub Pages URL ki jagah Render Backend URL use kiya hai
+            const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/accept-terms', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId })
             });
+            
             const result = await res.json();
+            
             if(result.success) {
-                window.location.href = "/dashboard.html";
+                // FIX: Path ko relative rakha hai dashboard.html ke liye
+                window.location.href = "dashboard.html";
+            } else {
+                alert("Error: " + result.error);
             }
         } catch (err) {
-            alert("Error: Settings save nahi ho payi.");
+            console.error(err);
+            alert("Error: Server se sampark nahi ho pa raha hai.");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Go to Battleground";
         }
     }
 </script>

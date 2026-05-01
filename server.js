@@ -138,54 +138,44 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 });
 
 // 2. OTP Store & Login System
-let otpStore = {}; 
+const axios = require('axios'); // File ke sabse upar ise add karein
 
+// --- 2. OTP Store & Login System (Formspree Version) ---
 app.post('/api/send-otp', async (req, res) => {
     const { mobile } = req.body;
-    console.log("OTP Request for:", mobile);
+    console.log("OTP Request via Formspree for:", mobile);
 
     try {
+        // 1. Database mein user check karein
         const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
         if (userRes.rows.length === 0) return res.status(404).json({ error: "Mobile number registered nahi hai!" });
 
         const user = userRes.rows[0];
         if (!user.is_verified) return res.status(403).json({ error: "Admin approval pending!" });
 
-        const settingsRes = await pool.query('SELECT * FROM admin_settings LIMIT 1');
-        if (settingsRes.rows.length === 0) return res.status(500).json({ error: "SMTP settings missing in DB!" });
-        
-        const settings = settingsRes.rows[0];
+        // 2. OTP Generate karein
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        // FIXED: Advanced Transport Configuration to prevent timeout
-        let transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: { 
-                user: settings.admin_email, 
-                pass: settings.smtp_password.replace(/\s+/g, '') 
-            },
-            pool: true, 
-            connectionTimeout: 15000, // Wait 15s for connection
-            greetingTimeout: 15000,
-            socketTimeout: 20000
+        // 3. FORMSPREE API CALL
+        // Note: Yahan 'xyzaabbcc' ki jagah apni Formspree ID daalein
+        const formspreeEndpoint = "https://formspree.io/f/xbdwjvqb"; 
+
+        await axios.post(formspreeEndpoint, {
+            email: user.email, // Formspree is email par notification bhejega
+            _subject: "Login OTP - Khel Bhai Ludo",
+            message: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}.`
         });
 
-        await transporter.sendMail({
-            from: `"Khel Bhai Ludo" <${settings.admin_email}>`,
-            to: user.email,
-            subject: 'Login OTP - Khel Bhai Ludo',
-            text: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}.`
-        });
-
-        console.log(`✅ OTP ${otp} sent to ${user.email}`);
-        res.json({ success: true, message: "OTP sent successfully!" });
+        console.log(`✅ OTP ${otp} sent via Formspree to ${user.email}`);
+        res.json({ success: true, message: "OTP bhej diya gaya hai! Email check karein." });
 
     } catch (err) {
-        console.error("❌ OTP Route Error:", err.message);
-        res.status(500).json({ error: "Email Error: " + err.message });
+        console.error("❌ Formspree Error:", err.message);
+        res.status(500).json({ error: "OTP sending failed: " + err.message });
     }
 });
+
 
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;

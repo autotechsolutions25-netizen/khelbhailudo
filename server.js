@@ -30,12 +30,6 @@ if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 // 4. Database Connection
 const pool = require('./db');
 
-// --- BREVO CONFIG (Optional if using Fast2SMS) ---
-const defaultClient = SibApiV3Sdk.ApiClient.instance;
-const apiKey = defaultClient.authentications['api-key'];
-apiKey.apiKey = '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'; 
-const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-
 // --- DATABASE TABLES INITIALIZATION ---
 const initDB = async () => {
     try {

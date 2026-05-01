@@ -207,6 +207,8 @@ app.post('/api/accept-terms', async (req, res) => {
 
 
 
+
+
 // Purana Verify Login (OTP Store wala)
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;
@@ -218,6 +220,45 @@ app.post('/api/verify-login', async (req, res) => {
         res.json({ success: true, userId: user.id, termsAccepted: user.terms_accepted });
     } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
+
+
+// --- 1. User Profile Detail (Naam aur Balance ke liye) ---
+app.get('/api/user/details/:id', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT full_name, wallet_balance, earning_balance FROM users WHERE id = $1', 
+            [req.params.id]
+        );
+        if (result.rows.length > 0) res.json(result.rows[0]);
+        else res.status(404).json({ error: "User not found" });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 2. Game History (Play Ludo/Win click ke liye) ---
+app.get('/api/user/game-history/:id', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM battles WHERE creator_id = $1 OR joiner_id = $1 ORDER BY created_at DESC', 
+            [req.params.id]
+        );
+        res.json(result.rows); // Agar khali hai toh [] jayega
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- 3. Transaction History (Wallet transaction ke liye) ---
+app.get('/api/user/transactions/:id', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM transactions WHERE user_id = $1 ORDER BY created_at DESC', 
+            [req.params.id]
+        );
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
+
+
 
 // 3. Battles
 app.post('/api/battles/create', async (req, res) => {

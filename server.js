@@ -134,11 +134,17 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 
 // 2. SEND OTP via FAST2SMS
 app.post('/api/send-otp', async (req, res) => {
-    const { mobile } = req.body;
+    let { mobile } = req.body;
     console.log("SMS OTP Request for:", mobile);
 
     try {
-        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
+        // 1. Mobile Number Cleaning (Sirf 10 digits rakhega)
+        // Agar user ne +91 ya space dala hai toh use hata dega
+        mobile = mobile.toString().replace(/\D/g, ""); 
+        if (mobile.length > 10) mobile = mobile.slice(-10);
+
+        // 2. Database mein user check karein
+        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
         if (userRes.rows.length === 0) {
             return res.status(404).json({ error: "Mobile number registered nahi hai!" });
         }
@@ -148,15 +154,24 @@ app.post('/api/send-otp', async (req, res) => {
             return res.status(403).json({ error: "Admin ne abhi aapko approve nahi kiya hai!" });
         }
 
+        // 3. 6-digit OTP Generate karein
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+        // 4. FAST2SMS API CALL (Updated with Headers for Safety)
+        const fast2smsKey = 'CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD'; 
+        
+        const response = await axios({
+            method: 'get',
+            url: 'https://www.fast2sms.com/dev/bulkV2',
             params: {
-                "authorization": "CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD", 
-                "variables_values": otp,
+                "authorization": fast2smsKey,
+                "variables_values": otp.toString(),
                 "route": "otp",
                 "numbers": mobile
+            },
+            headers: {
+                "cache-control": "no-cache"
             }
         });
 
@@ -164,12 +179,14 @@ app.post('/api/send-otp', async (req, res) => {
             console.log(`✅ SMS Sent Successfully to ${mobile}: OTP is ${otp}`);
             res.json({ success: true, message: "OTP aapke mobile par bhej diya gaya hai!" });
         } else {
-            throw new Error(response.data.message);
+            // Agar Fast2SMS se koi message aaye toh wo dikhayega
+            console.error("Fast2SMS Reject Reason:", response.data.message);
+            res.status(400).json({ error: response.data.message[0] || "Fast2SMS Error" });
         }
 
     } catch (err) {
-        console.error("❌ SMS Error:", err.message);
-        res.status(500).json({ error: "SMS bhejne mein galti hui: " + err.message });
+        console.error("❌ SMS Error Details:", err.response ? err.response.data : err.message);
+        res.status(500).json({ error: "SMS Error: " + (err.response ? JSON.stringify(err.response.data) : err.message) });
     }
 });
 

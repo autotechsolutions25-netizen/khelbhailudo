@@ -1,5 +1,5 @@
 const express = require('express');
-const cors = require('cors'); // CORS ko import kiya
+const cors = require('cors');
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const app = express();
 
-// 1. CORS Configuration (Ise sabse upar hona chahiye)
+// 1. CORS Configuration
 app.use(cors({
     origin: 'https://autotechsolutions25-netizen.github.io', 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -24,10 +24,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
-// Ensure uploads folder exists
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 
-// 4. Database Connection (db.js file se)
+// 4. Database Connection
 const pool = require('./db');
 
 // --- DATABASE TABLES INITIALIZATION ---
@@ -96,7 +95,6 @@ const initDB = async () => {
 };
 initDB();
 
-// File Upload Configuration
 const storage = multer.diskStorage({
     destination: './uploads/',
     filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
@@ -104,6 +102,21 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // --- ROUTES ---
+
+// NEW: API to Update Admin Settings (SMTP)
+app.post('/api/admin/update-settings', async (req, res) => {
+    const { email, smtp_password } = req.body;
+    try {
+        await pool.query('DELETE FROM admin_settings'); // Purani settings mitao
+        await pool.query(
+            'INSERT INTO admin_settings (admin_email, smtp_password) VALUES ($1, $2)',
+            [email, smtp_password.replace(/\s+/g, '')]
+        );
+        res.json({ success: true, message: "Settings updated successfully!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // 1. User Registration
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
@@ -129,98 +142,72 @@ let otpStore = {};
 
 app.post('/api/send-otp', async (req, res) => {
     const { mobile } = req.body;
-    console.log("OTP Request for:", mobile); // Debugging ke liye
+    console.log("OTP Request for:", mobile);
 
     try {
-        // 1. Check User in DB
         const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
-        
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ error: "Mobile number registered nahi hai!" });
-        }
+        if (userRes.rows.length === 0) return res.status(404).json({ error: "Mobile number registered nahi hai!" });
 
         const user = userRes.rows[0];
+        if (!user.is_verified) return res.status(403).json({ error: "Admin ne abhi aapko approve nahi kiya hai!" });
 
-        if (!user.is_verified) {
-            return res.status(403).json({ error: "Admin ne abhi aapko approve nahi kiya hai!" });
-        }
-
-        // 2. Get Admin Settings
         const settingsRes = await pool.query('SELECT * FROM admin_settings LIMIT 1');
-        if (settingsRes.rows.length === 0) {
-            return res.status(500).json({ error: "Backend settings missing! admin_settings table check karein." });
-        }
+        if (settingsRes.rows.length === 0) return res.status(500).json({ error: "SMTP Settings missing in DB!" });
         
         const settings = settingsRes.rows[0];
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        // 3. Send Email
-let transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // 587 ke liye false hi rahega
-    auth: { 
-        user: settings.admin_email, 
-        pass: settings.smtp_password.replace(/\s+/g, '') 
-    },
-    tls: {
-        rejectUnauthorized: false // Ye line timeout se bachati hai
-    }
-});
+        // FIXED TRANSPORT CONFIG
+        let transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { 
+                user: settings.admin_email, 
+                pass: settings.smtp_password.replace(/\s+/g, '') 
+            },
+            pool: true, // Reuse connection
+            connectionTimeout: 10000 // 10s Timeout
+        });
 
         await transporter.sendMail({
             from: `"Khel Bhai Ludo" <${settings.admin_email}>`,
             to: user.email,
             subject: 'Login OTP - Khel Bhai Ludo',
-            text: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}. Ye OTP sirf 5 minute ke liye valid hai.`
+            text: `Namaste ${user.full_name}, aapka login OTP hai: ${otp}.`
         });
 
         console.log(`✅ OTP ${otp} sent to ${user.email}`);
-        res.json({ success: true, message: "OTP aapke registered email par bhej diya gaya hai!" });
+        res.json({ success: true, message: "OTP bhej diya gaya hai!" });
 
     } catch (err) {
         console.error("❌ OTP Route Error:", err.message);
-        res.status(500).json({ error: "Server Error: " + err.message });
+        res.status(500).json({ error: "Email Error: " + err.message });
     }
 });
 
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;
     try {
-        if (!otpStore[mobile] || otpStore[mobile] != otp) {
-            return res.status(400).json({ error: "Invalid or Expired OTP!" });
-        }
+        if (!otpStore[mobile] || otpStore[mobile] != otp) return res.status(400).json({ error: "Invalid OTP!" });
         const userRes = await pool.query('SELECT id, terms_accepted FROM users WHERE mobile_no = $1', [mobile]);
-        if (userRes.rows.length === 0) return res.status(404).json({ error: "User record not found!" });
-
         const user = userRes.rows[0];
         delete otpStore[mobile];
         res.json({ success: true, userId: user.id, termsAccepted: user.terms_accepted });
-    } catch (err) {
-        res.status(500).json({ error: "Server error during login." });
-    }
+    } catch (err) { res.status(500).json({ error: "Login failed." }); }
 });
 
-// 3. Challenge / Battle System
+// 3. Battles
 app.post('/api/battles/create', async (req, res) => {
     const { userId, amount } = req.body;
     try {
-        const result = await pool.query(
-            'INSERT INTO battles (creator_id, amount, status) VALUES ($1, $2, $3) RETURNING id', 
-            [userId, amount, 'open']
-        );
+        const result = await pool.query('INSERT INTO battles (creator_id, amount, status) VALUES ($1, $2, $3) RETURNING id', [userId, amount, 'open']);
         res.json({ success: true, battleId: result.rows[0].id });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/battles/list', async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT b.*, u.username FROM battles b 
-            JOIN users u ON b.creator_id = u.id 
-            WHERE b.status = 'open' ORDER BY b.created_at DESC
-        `);
+        const result = await pool.query('SELECT b.*, u.username FROM battles b JOIN users u ON b.creator_id = u.id WHERE b.status = \'open\' ORDER BY b.created_at DESC');
         res.json(result.rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -237,12 +224,8 @@ app.post('/api/battles/join', async (req, res) => {
 app.post('/api/user/submit-kyc', async (req, res) => {
     const { userId, bankAcc, ifsc, upiId, whatsapp } = req.body;
     try {
-        await pool.query(`
-            UPDATE users SET bank_account_no = $1, ifsc_code = $2, upi_id = $3, whatsapp_no = $4, 
-            kyc_status = 'pending', kyc_reject_reason = NULL WHERE id = $5`,
-            [bankAcc, ifsc, upiId, whatsapp, userId]
-        );
-        res.json({ success: true, message: "KYC submitted!" });
+        await pool.query('UPDATE users SET bank_account_no = $1, ifsc_code = $2, upi_id = $3, whatsapp_no = $4, kyc_status = \'pending\' WHERE id = $5', [bankAcc, ifsc, upiId, whatsapp, userId]);
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -253,12 +236,9 @@ app.get('/api/user/profile/:userId', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// 5. Payments & Wallet
+// 5. Razorpay
 const Razorpay = require('razorpay');
-const rzp = new Razorpay({
-    key_id: 'rzp_test_SflXxOSDMFAolF',
-    key_secret: 'N6Ve21b0cUAJZKnaP7ozPiu8'
-});
+const rzp = new Razorpay({ key_id: 'rzp_test_SflXxOSDMFAolF', key_secret: 'N6Ve21b0cUAJZKnaP7ozPiu8' });
 
 app.post('/api/pay/create-order', async (req, res) => {
     const { amount } = req.body;
@@ -277,26 +257,21 @@ app.post('/api/pay/verify', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 6. Withdrawal System
+// 6. Withdrawals
 app.post('/api/withdraw/request', async (req, res) => {
     const { userId, amount } = req.body;
     try {
-        const userResult = await pool.query('SELECT earning_balance FROM users WHERE id = $1', [userId]);
-        const user = userResult.rows[0];
+        const user = (await pool.query('SELECT earning_balance FROM users WHERE id = $1', [userId])).rows[0];
         if (parseFloat(user.earning_balance) < parseFloat(amount)) return res.status(400).json({ message: "Low Balance" });
-
         await pool.query('BEGIN');
         await pool.query('INSERT INTO withdrawals (user_id, amount, status) VALUES ($1, $2, $3)', [userId, amount, 'pending']);
         await pool.query('UPDATE users SET earning_balance = earning_balance - $1 WHERE id = $2', [amount, userId]);
         await pool.query('COMMIT');
         res.json({ success: true });
-    } catch (err) {
-        await pool.query('ROLLBACK');
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { await pool.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
 });
 
-// 7. Admin Panel Routes
+// 7. Admin Panel
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
         const u = await pool.query('SELECT count(*) FROM users');
@@ -306,14 +281,6 @@ app.get('/api/admin/master-stats', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/admin/withdrawals/pending', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT w.*, u.username, u.upi_id FROM withdrawals w JOIN users u ON w.user_id = u.id WHERE w.status = \'pending\'');
-        res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// 8. Server Listen
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

@@ -179,14 +179,28 @@ app.post('/api/verify-login-firebase', async (req, res) => {
 
 
 
+// --- 1. Terms Accept Karne Ka Route ---
 app.post('/api/accept-terms', async (req, res) => {
     const { userId } = req.body;
+    
+    console.log("Terms acceptance request for User ID:", userId);
+
     try {
-        await pool.query('UPDATE users SET terms_accepted = true WHERE id = $1', [userId]);
-        res.json({ success: true });
+        // Database mein terms_accepted ko true set karein
+        const result = await pool.query(
+            'UPDATE users SET terms_accepted = true WHERE id = $1 RETURNING *', 
+            [userId]
+        );
+
+        if (result.rowCount > 0) {
+            console.log(`✅ User ${userId} ne terms accept kar liye hain.`);
+            res.json({ success: true, message: "Terms accepted successfully!" });
+        } else {
+            res.status(404).json({ success: false, error: "User nahi mila!" });
+        }
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: "Terms update fail" });
+        console.error("❌ Terms Update Error:", err.message);
+        res.status(500).json({ success: false, error: "Database error: " + err.message });
     }
 });
 

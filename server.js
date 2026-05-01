@@ -33,7 +33,7 @@ const pool = require('./db');
 const defaultClient = SibApiV3Sdk.ApiClient.instance;
 const apiKey = defaultClient.authentications['api-key'];
 // Aapka Brevo API Key yahan set kar diya hai
-apiKey.apiKey = 'xsmtpsib-593c2ec7578fb595cfc8e4d1d2014cfa5a4585ba18d09371a5acf8ed44fe5824-aJm3y67SODMDousz'; 
+apiKey.apiKey = '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'; 
 
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 

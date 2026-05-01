@@ -177,6 +177,22 @@ app.post('/api/verify-login-firebase', async (req, res) => {
     }
 });
 
+
+
+app.post('/api/accept-terms', async (req, res) => {
+    const { userId } = req.body;
+    try {
+        await pool.query('UPDATE users SET terms_accepted = true WHERE id = $1', [userId]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Terms update fail" });
+    }
+});
+
+
+
+
 // Purana Verify Login (OTP Store wala)
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;

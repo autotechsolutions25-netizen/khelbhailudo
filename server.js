@@ -129,10 +129,10 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 // 2. SEND OTP via FAST2SMS
 app.post('/api/send-otp', async (req, res) => {
     let { mobile } = req.body;
-    console.log("Quick SMS OTP Request for:", mobile);
+    console.log("Final Attempt - SMS OTP Request for:", mobile);
 
     try {
-        // 1. Mobile number cleaning (10 digits)
+        // 1. Mobile Number Format Fix (10 Digits only)
         mobile = mobile.toString().replace(/\D/g, ""); 
         if (mobile.length > 10) mobile = mobile.slice(-10);
 
@@ -142,37 +142,33 @@ app.post('/api/send-otp', async (req, res) => {
             return res.status(404).json({ error: "Mobile number registered nahi hai!" });
         }
 
-        // 3. Generate 6-digit OTP
+        // 3. OTP Generation
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        // 4. FAST2SMS QUICK SMS API CALL
+        // 4. FAST2SMS API - Updated for Quick Route 'q'
         const fast2smsKey = 'CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD'; 
         
-        const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
-            params: {
-                "authorization": fast2smsKey,
-                "route": "q", // 'q' is for Quick SMS (No verification needed)
-                "message": `Aapka Khel Bhai Ludo login OTP hai: ${otp}`,
-                "language": "english",
-                "flash": 0,
-                "numbers": mobile
-            }
-        });
+        // Error 400 se bachne ke liye hum URL parameters use karenge
+        const apiUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${fast2smsKey}&route=q&message=${encodeURIComponent('Aapka Khel Bhai Ludo OTP hai: ' + otp)}&language=english&flash=0&numbers=${mobile}`;
+
+        const response = await axios.get(apiUrl);
 
         if (response.data.return) {
-            console.log(`✅ OTP ${otp} sent via Quick SMS to ${mobile}`);
+            console.log(`✅ OTP Sent: ${otp}`);
             res.json({ success: true, message: "OTP bhej diya gaya hai!" });
         } else {
-            console.error("Fast2SMS Reject Reason:", response.data.message);
-            res.status(400).json({ error: response.data.message });
+            console.error("Fast2SMS Error Details:", response.data);
+            res.status(400).json({ error: response.data.message[0] || "Fast2SMS ne mana kar diya" });
         }
 
     } catch (err) {
-        console.error("❌ Quick SMS Error:", err.message);
-        res.status(500).json({ error: "SMS sending failed" });
+        // Agar status 400 aata hai toh iska matlab API key ya balance issue hai
+        console.error("❌ Final Error Trace:", err.response ? err.response.data : err.message);
+        res.status(500).json({ error: "Service Busy: " + (err.response ? err.response.data.message : err.message) });
     }
 });
+
 
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;

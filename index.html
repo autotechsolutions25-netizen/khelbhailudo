@@ -147,7 +147,7 @@ async function verifyFirebaseLogin() {
             const data = await response.json();
             if(data.success) {
                 localStorage.setItem('userId', data.userId);
-                window.location.href = data.termsAccepted ? "/dashboard.html" : "/term.html";
+               window.location.href = data.termsAccepted ? "dashboard.html" : "term.html";
             } else {
                 alert(data.error);
                 btn.disabled = false;

@@ -134,35 +134,51 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 });
 
 // 2. SEND OTP via BREVO API (100% Timeout Fix)
+const axios = require('axios'); // Sabse upar add karein
+
+// --- OTP Store ---
+let otpStore = {}; 
+
 app.post('/api/send-otp', async (req, res) => {
     const { mobile } = req.body;
-    console.log("OTP Request via Brevo for:", mobile);
+    console.log("SMS OTP Request for:", mobile);
 
     try {
+        // 1. Database mein user check karein
         const userRes = await pool.query('SELECT * FROM users WHERE mobile_no = $1', [mobile]);
-        if (userRes.rows.length === 0) return res.status(404).json({ error: "Mobile number registered nahi hai!" });
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ error: "Mobile number registered nahi hai!" });
+        }
 
         const user = userRes.rows[0];
-        if (!user.is_verified) return res.status(403).json({ error: "Admin approval pending!" });
+        if (!user.is_verified) {
+            return res.status(403).json({ error: "Admin ne abhi aapko approve nahi kiya hai!" });
+        }
 
+        // 2. 6-digit OTP Generate karein
         const otp = Math.floor(100000 + Math.random() * 900000);
         otpStore[mobile] = otp;
 
-        // Brevo Email Logic
-        let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-        sendSmtpEmail.subject = "Login OTP - Khel Bhai Ludo";
-        sendSmtpEmail.htmlContent = `<html><body><h1>Namaste ${user.full_name}</h1><p>Aapka login OTP hai: <b>${otp}</b>. Ye OTP sirf 5 minute ke liye valid hai.</p></body></html>`;
-        sendSmtpEmail.sender = { "name": "Khel Bhai Ludo", "email": "autotechsolutions25@gmail.com" };
-        sendSmtpEmail.to = [{ "email": user.email, "name": user.full_name }];
+        // 3. FAST2SMS API CALL
+        const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+            params: {
+                "authorization": "CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD", // Apni API Key yahan daalein
+                "variables_values": otp,
+                "route": "otp",
+                "numbers": mobile
+            }
+        });
 
-        await apiInstance.sendTransacEmail(sendSmtpEmail);
-
-        console.log(`✅ OTP ${otp} sent via Brevo to ${user.email}`);
-        res.json({ success: true, message: "OTP aapke email par bhej diya gaya hai!" });
+        if (response.data.return) {
+            console.log(`✅ SMS Sent Successfully to ${mobile}: OTP is ${otp}`);
+            res.json({ success: true, message: "OTP aapke mobile par bhej diya gaya hai!" });
+        } else {
+            throw new Error(response.data.message);
+        }
 
     } catch (err) {
-        console.error("❌ Brevo Error:", err.message);
-        res.status(500).json({ error: "OTP sending failed: " + err.message });
+        console.error("❌ SMS Error:", err.message);
+        res.status(500).json({ error: "SMS bhejne mein galti hui: " + err.message });
     }
 });
 

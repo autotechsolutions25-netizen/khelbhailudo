@@ -126,50 +126,58 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
     }
 });
 
-// 2. SEND OTP via FAST2SMS
+// 2. SEND OTP via FAST2SMS (Existing Code - Don't Delete)
 app.post('/api/send-otp', async (req, res) => {
     let { mobile } = req.body;
-    console.log("Final Attempt - SMS OTP Request for:", mobile);
-
     try {
-        // 1. Mobile Number Format Fix (10 Digits only)
+        mobile = mobile.toString().replace(/\D/g, ""); 
+        if (mobile.length > 10) mobile = mobile.slice(-10);
+        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: "Mobile registered nahi hai!" });
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        otpStore[mobile] = otp;
+        const fast2smsKey = 'CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD'; 
+        const apiUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${fast2smsKey}&route=q&message=${encodeURIComponent('Aapka Khel Bhai Ludo OTP hai: ' + otp)}&language=english&flash=0&numbers=${mobile}`;
+        const response = await axios.get(apiUrl);
+        if (response.data.return) { res.json({ success: true, message: "OTP bhej diya gaya hai!" }); }
+        else { res.status(400).json({ error: response.data.message[0] || "SMS failed" }); }
+    } catch (err) { res.status(500).json({ error: "Service Busy" }); }
+});
+
+// NEW ROUTE: Firebase OTP Verification Check
+// Jab Frontend (Firebase) OTP verify kar lega, tab ye call hoga
+app.post('/api/verify-login-firebase', async (req, res) => {
+    let { mobile } = req.body;
+    try {
+        // Mobile cleaning (Sirf 10 digit)
         mobile = mobile.toString().replace(/\D/g, ""); 
         if (mobile.length > 10) mobile = mobile.slice(-10);
 
-        // 2. Check User in DB
-        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ error: "Mobile number registered nahi hai!" });
-        }
-
-        // 3. OTP Generation
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        otpStore[mobile] = otp;
-
-        // 4. FAST2SMS API - Updated for Quick Route 'q'
-        const fast2smsKey = 'CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD'; 
+        const userRes = await pool.query('SELECT id, terms_accepted, is_verified FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
         
-        // Error 400 se bachne ke liye hum URL parameters use karenge
-        const apiUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${fast2smsKey}&route=q&message=${encodeURIComponent('Aapka Khel Bhai Ludo OTP hai: ' + otp)}&language=english&flash=0&numbers=${mobile}`;
-
-        const response = await axios.get(apiUrl);
-
-        if (response.data.return) {
-            console.log(`✅ OTP Sent: ${otp}`);
-            res.json({ success: true, message: "OTP bhej diya gaya hai!" });
-        } else {
-            console.error("Fast2SMS Error Details:", response.data);
-            res.status(400).json({ error: response.data.message[0] || "Fast2SMS ne mana kar diya" });
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "Aap registered nahi hain. Pehle Register karein!" });
         }
 
+        const user = userRes.rows[0];
+        
+        // Safety Check: Kya admin ne approve kiya hai?
+        if (!user.is_verified) {
+            return res.status(403).json({ success: false, error: "Aapka account admin approval ke liye pending hai!" });
+        }
+
+        res.json({ 
+            success: true, 
+            userId: user.id, 
+            termsAccepted: user.terms_accepted 
+        });
     } catch (err) {
-        // Agar status 400 aata hai toh iska matlab API key ya balance issue hai
-        console.error("❌ Final Error Trace:", err.response ? err.response.data : err.message);
-        res.status(500).json({ error: "Service Busy: " + (err.response ? err.response.data.message : err.message) });
+        console.error("Firebase Login Error:", err.message);
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 
-
+// Purana Verify Login (OTP Store wala)
 app.post('/api/verify-login', async (req, res) => {
     const { mobile, otp } = req.body;
     try {

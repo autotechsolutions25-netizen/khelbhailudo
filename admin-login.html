@@ -20,21 +20,31 @@
     </div>
 
     <script>
-        async function loginAdmin() {
-            const password = document.getElementById('adminPass').value;
-            const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/admin/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            });
-            const data = await res.json();
-            if(data.success) {
-                localStorage.setItem('admin_logged_in', 'true');
-                window.location.href = "admin-pannel.html";
-            } else {
-                alert("Galat Password!");
-            }
+async function loginAdmin() {
+    const password = document.getElementById('adminPass').value;
+    try {
+        const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        
+        // Agar route nahi mila toh alert dikhaye
+        if (res.status === 404) {
+            return alert("Error: Backend mein login route missing hai! Server deploy karein.");
         }
+
+        const data = await res.json();
+        if(data.success) {
+            localStorage.setItem('admin_logged_in', 'true');
+            window.location.href = "admin-pannel.html";
+        } else {
+            alert("Galat Password!");
+        }
+    } catch (err) {
+        alert("Server se connect nahi ho pa raha hai.");
+    }
+}
     </script>
 </body>
 </html>

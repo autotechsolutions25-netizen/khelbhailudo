@@ -341,6 +341,32 @@ app.post('/api/pay/create-order', async (req, res) => {
 
 
 
+app.post('/api/webhook/upigateway', async (req, res) => {
+    const { status, client_txn_id, amount, udf1 } = req.body; // udf1 mein humne userId bheja tha
+
+    if (status === 'success') {
+        try {
+            // 1. Transaction record update karein
+            await pool.query('INSERT INTO transactions (user_id, amount, utr_no, status, type) VALUES ($1, $2, $3, $4, $5)', 
+            [udf1, amount, client_txn_id, 'success', 'deposit']);
+
+            // 2. User ka Wallet Update karein
+            await pool.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2', [amount, udf1]);
+
+            console.log(`✅ Wallet Updated for User ${udf1}: ₹${amount}`);
+            res.send('OK'); // Gateway ko batayein ki humne data process kar liya
+        } catch (err) {
+            console.error("Webhook Error:", err.message);
+            res.status(500).send('Database Error');
+        }
+    } else {
+        res.send('Not Success');
+    }
+});
+
+
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

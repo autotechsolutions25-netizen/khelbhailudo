@@ -231,19 +231,15 @@
             window.location.href = "index.html";
         }
 
-        window.onload = () => {
-            // Simple security check (Aap ismein password login bhi add kar sakte hain)
-            const isAdmin = localStorage.getItem('admin_logged_in');
-            if(!isAdmin) {
-                const pass = prompt("Admin Password daalein:");
-                if(pass === "Praveen@123") { // Apna password yahan set karein
-                    localStorage.setItem('admin_logged_in', 'true');
-                } else {
-                    window.location.href = "index.html";
-                }
-            }
-            updateStats();
-        };
+window.onload = async () => {
+    // Check karein ki kya admin logged in hai
+    if (localStorage.getItem('admin_logged_in') !== 'true') {
+        window.location.href = "admin-login.html"; // Login page par bhej dein
+        return;
+    }
+    await loadStats();
+    showSection('stats'); 
+};
     </script>
 </body>
 </html>

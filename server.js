@@ -318,7 +318,7 @@ app.post('/api/pay/create-order', async (req, res) => {
 
     try {
         const response = await axios.post('https://api.ekqr.in/api/create_order', {
-            "key": "0f1e36dd-1505-4bd1-96e6-27cfd0cc48fc", // Screenshot wali Key
+            "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38", // Screenshot wali Key
             "client_txn_id": client_txn_id,
             "amount": amount.toString(),
             "p_info": "Wallet Topup",
@@ -329,20 +329,20 @@ app.post('/api/pay/create-order', async (req, res) => {
             "udf1": userId.toString()
         });
 
-        console.log("UPIGateway Response:", response.data); // Ye Render logs mein check karein
+        console.log("UPIGateway Response:", response.data); // Render Logs mein dekhein kya aa raha hai
 
-        if (response.data.status === true && response.data.data) {
+        // Yahan check karein ki data aur payment_url dono hain ya nahi
+        if (response.data && response.data.status === true && response.data.data && response.data.data.payment_url) {
             res.json({ success: true, payment_data: response.data.data });
         } else {
-            // Agar status false hai toh error message bhejien
             res.status(400).json({ 
                 success: false, 
-                error: response.data.msg || "Gateway ne mana kar diya" 
+                error: response.data.msg || "Gateway response mein payment_url nahi mila" 
             });
         }
     } catch (err) {
-        console.error("Axios Error:", err.response ? err.response.data : err.message);
-        res.status(500).json({ success: false, error: "Gateway connection fail" });
+        console.error("Gateway Error:", err.response ? err.response.data : err.message);
+        res.status(500).json({ success: false, error: "Gateway connection failed" });
     }
 });
 

@@ -85,29 +85,27 @@
                 btn.disabled = true;
                 loader.style.display = 'flex';
 
-                // 1. Backend route call karna jo UPIGateway order banaye
-try {
-    const res = await fetch(`${BACKEND_URL}/api/pay/create-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, userId })
-    });
-    
-    const data = await res.json();
+                const res = await fetch(`${BACKEND_URL}/api/pay/create-order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount, userId })
+                });
+                
+                const data = await res.json();
 
-    if (data.success && data.payment_data && data.payment_data.payment_url) {
-        window.location.href = data.payment_data.payment_url;
-    } else {
-        // Ab undefined error nahi aayega, seedha message dikhega
-        alert("Payment Error: " + (data.error || "Gateway busy hai, thodi der baad koshish karein"));
-        loader.style.display = 'none';
-        btn.disabled = false;
-    }
-} catch (err) {
-    alert("Server connect nahi ho raha hai.");
-    loader.style.display = 'none';
-    btn.disabled = false;
-}
+                if (data.success && data.payment_data && data.payment_data.payment_url) {
+                    window.location.href = data.payment_data.payment_url;
+                } else {
+                    alert("Payment Error: " + (data.error || "Gateway busy hai, thodi der baad koshish karein"));
+                    loader.style.display = 'none';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("Server connect nahi ho raha hai.");
+                loader.style.display = 'none';
+                btn.disabled = false;
+            }
         }
     </script>
 </body>

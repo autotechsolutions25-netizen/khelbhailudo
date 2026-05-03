@@ -421,6 +421,17 @@ app.post('/api/admin/approve-user', async (req, res) => {
 
 
 
+// 3. Pending Users List (New User ke liye)
+app.get('/api/admin/users/list', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, full_name, username, mobile_no, wallet_balance, is_verified FROM users ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

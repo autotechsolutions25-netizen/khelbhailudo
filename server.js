@@ -367,15 +367,33 @@ app.post('/api/webhook/upigateway', async (req, res) => {
 
 
 
-// Admin Login Route
+// Admin Login Route - Ise server.js mein add karein
 app.post('/api/admin/login', (req, res) => {
     const { password } = req.body;
     const ADMIN_PASSWORD = "Praveen@123"; // Aap ise badal sakte hain
 
     if (password === ADMIN_PASSWORD) {
-        res.json({ success: true, token: "ADMIN_SECRET_SESSION_TOKEN" });
+        // Login successful hone par flag aur token bhejein
+        res.json({ success: true, token: "ADMIN_SESSION_ACTIVE" });
     } else {
-        res.status(401).json({ success: false, message: "Galti Password!" });
+        res.status(401).json({ success: false, message: "Galat Password!" });
+    }
+});
+
+// Admin Stats Route - Dashboard ke numbers ke liye
+app.get('/api/admin/master-stats', async (req, res) => {
+    try {
+        const users = await pool.query('SELECT COUNT(*) FROM users');
+        const pendingKyc = await pool.query('SELECT COUNT(*) FROM users WHERE is_verified = false');
+        const pendingWithdraw = await pool.query('SELECT COUNT(*) FROM withdrawals WHERE status = \'pending\'');
+        
+        res.json({
+            totalUsers: users.rows[0].count,
+            pendingKyc: pendingKyc.rows[0].count,
+            pendingWithdrawals: pendingWithdraw.rows[0].count
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

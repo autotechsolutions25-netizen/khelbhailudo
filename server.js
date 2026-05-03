@@ -302,37 +302,41 @@ app.post('/api/withdraw/request', async (req, res) => {
 
 
 // UPIGateway Order Create
+// SIRF ISE RAKHEIN ✅
 app.post('/api/pay/create-order', async (req, res) => {
     const { amount, userId } = req.body;
     const client_txn_id = "TXN" + Date.now();
 
     try {
+        // Database se user ka asli mobile aur naam lein taaki gateway reject na kare
+        const userRes = await pool.query('SELECT full_name, mobile_no FROM users WHERE id = $1', [userId]);
+        const user = userRes.rows[0] || { full_name: "Ludo Player", mobile_no: "7079950417" };
+
         const response = await axios.post('https://api.ekqr.in/api/create_order', {
-            "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38", // Screenshot wali Key
+            "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38", 
             "client_txn_id": client_txn_id,
             "amount": amount.toString(),
             "p_info": "Wallet Topup",
-            "customer_name": "Ludo Player",
+            "customer_name": user.full_name.substring(0, 15), // Naam chota hona chahiye
             "customer_email": "user@gmail.com",
-            "customer_mobile": "7079950417",
+            "customer_mobile": user.mobile_no.replace(/\D/g, "").slice(-10), // Asli mobile no
             "redirect_url": "https://autotechsolutions25-netizen.github.io/dashboard.html",
             "udf1": userId.toString()
         });
 
-        console.log("UPIGateway Response:", response.data); // Render Logs mein dekhein kya aa raha hai
+        console.log("UPIGateway Response:", response.data);
 
-        // Yahan check karein ki data aur payment_url dono hain ya nahi
-        if (response.data && response.data.status === true && response.data.data && response.data.data.payment_url) {
+        if (response.data && response.data.status === true) {
             res.json({ success: true, payment_data: response.data.data });
         } else {
             res.status(400).json({ 
                 success: false, 
-                error: response.data.msg || "Gateway response mein payment_url nahi mila" 
+                error: response.data.msg || "Gateway Error" 
             });
         }
     } catch (err) {
         console.error("Gateway Error:", err.response ? err.response.data : err.message);
-        res.status(500).json({ success: false, error: "Gateway connection failed" });
+        res.status(500).json({ success: false, error: "Gateway Busy or Connection Fail" });
     }
 });
 

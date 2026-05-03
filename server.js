@@ -314,28 +314,35 @@ app.post('/api/withdraw/request', async (req, res) => {
 // UPIGateway Order Create
 app.post('/api/pay/create-order', async (req, res) => {
     const { amount, userId } = req.body;
-    const client_txn_id = "TXN" + Date.now(); // Unique Transaction ID
+    const client_txn_id = "TXN" + Date.now();
 
     try {
         const response = await axios.post('https://api.ekqr.in/api/create_order', {
-            "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38", // Screenshot wali Key
+            "key": "0f1e36dd-1505-4bd1-96e6-27cfd0cc48fc", // Screenshot wali Key
             "client_txn_id": client_txn_id,
             "amount": amount.toString(),
             "p_info": "Wallet Topup",
             "customer_name": "Ludo Player",
             "customer_email": "user@gmail.com",
             "customer_mobile": "7079950417",
-            "redirect_url": "https://autotechsolutions25-netizen.github.io/success.html",
-            "udf1": userId.toString() // Ismein UserId save karein taaki baad mein pehchan sakein
+            "redirect_url": "https://autotechsolutions25-netizen.github.io/dashboard.html",
+            "udf1": userId.toString()
         });
 
-        if (response.data.status) {
+        console.log("UPIGateway Response:", response.data); // Ye Render logs mein check karein
+
+        if (response.data.status === true && response.data.data) {
             res.json({ success: true, payment_data: response.data.data });
         } else {
-            res.status(400).json({ error: response.data.msg });
+            // Agar status false hai toh error message bhejien
+            res.status(400).json({ 
+                success: false, 
+                error: response.data.msg || "Gateway ne mana kar diya" 
+            });
         }
     } catch (err) {
-        res.status(500).json({ error: "Gateway Error" });
+        console.error("Axios Error:", err.response ? err.response.data : err.message);
+        res.status(500).json({ success: false, error: "Gateway connection fail" });
     }
 });
 

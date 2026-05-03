@@ -368,6 +368,35 @@ app.post('/api/webhook/upigateway', async (req, res) => {
 
 
 
+async function loadPendingUsers() {
+    const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/admin/pending-users');
+    const users = await res.json();
+    
+    const container = document.getElementById('userList');
+    container.innerHTML = users.map(user => `
+        <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+            <p>Name: ${user.full_name}</p>
+            <p>Mobile: ${user.mobile_no}</p>
+            <button onclick="approveUser(${user.id})">Approve Kar do</button>
+        </div>
+    `).join('');
+}
+
+async function approveUser(id) {
+    const res = await fetch('https://khel-bhai-luso-backend-service.onrender.com/api/admin/approve-user', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId: id })
+    });
+    const data = await res.json();
+    if(data.success) {
+        alert("User Approve Ho Gaya!");
+        loadPendingUsers();
+    }
+}
+
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

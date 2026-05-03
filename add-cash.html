@@ -95,16 +95,16 @@
                     })
                 });
                 
-                const data = await res.json();
+const data = await res.json();
 
-                if (data.success && data.payment_data.payment_url) {
-                    // 2. User ko UPIGateway ke payment page (QR) par redirect karna
-                    window.location.href = data.payment_data.payment_url;
-                } else {
-                    alert(data.error || "Gateway response failed. Try again.");
-                    loader.style.display = 'none';
-                    btn.disabled = false;
-                }
+if (data.success && data.payment_data && data.payment_data.payment_url) {
+    window.location.href = data.payment_data.payment_url;
+} else {
+    // Agar koi error hai toh wahi dikhao bajaye 'undefined' error ke
+    alert("Error: " + (data.error || "Payment data incomplete"));
+    loader.style.display = 'none';
+    btn.disabled = false;
+}
             } catch (err) {
                 console.error("Payment Error:", err);
                 alert("Server connection failed. Check if backend is running.");

@@ -31,10 +31,10 @@
 <body>
 
     <div class="top-bar">
-        <div onclick="history.back()"><i class="fas fa-arrow-left"></i> Back</div>
+        <div onclick="history.back()" style="cursor: pointer;"><i class="fas fa-arrow-left"></i> Back</div>
         <div class="token-box">
             <span style="font-size: 12px; color: #94a3b8;">My Tokens:</span>
-            <span id="myTokens" style="font-weight: bold; color: var(--accent);">0</span>
+            <span id="myTokens" style="font-weight: bold; color: var(--accent);">Loading...</span>
         </div>
     </div>
 
@@ -53,35 +53,45 @@
     </div>
 
     <script>
+        const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
         const userId = localStorage.getItem('userId');
-        let pollingInterval = null; // Background check ke liye timer
+        let pollingInterval = null;
 
         window.onload = () => {
-            if(!userId) window.location.href = "/index.html";
+            if(!userId || userId === "undefined") {
+                window.location.href = "index.html";
+                return;
+            }
             fetchProfile();
             fetchBattles();
-            setInterval(fetchBattles, 5000);
+            setInterval(fetchBattles, 5000); // Har 5 sec mein battles list refresh
         };
 
         async function fetchProfile() {
-            const res = await fetch(`/api/user/profile/${userId}`);
-            const data = await res.json();
-            document.getElementById('myTokens').innerText = data.wallet_balance || 0;
+            try {
+                // FIXED: Backend route changed to /user/details to match server.js
+                const res = await fetch(`${API_BASE}/user/details/${userId}`);
+                const data = await res.json();
+                document.getElementById('myTokens').innerText = data.wallet_balance ?? 0;
+            } catch (err) {
+                console.error("Profile Error:", err);
+                document.getElementById('myTokens').innerText = "0";
+            }
         }
 
         async function createChallenge() {
             const amount = document.getElementById('battleAmount').value;
-            const balance = parseInt(document.getElementById('myTokens').innerText);
+            const balance = parseFloat(document.getElementById('myTokens').innerText);
             const btn = document.getElementById('createBtn');
 
             if(!amount || amount < 10) return alert("Min. challenge amount ₹10 hai.");
-            if(amount > balance) return alert("Aapke paas paryapt tokens nahi hain!");
+            if(parseFloat(amount) > balance) return alert("Aapke paas paryapt tokens nahi hain!");
 
             try {
                 btn.disabled = true;
                 btn.innerText = "Setting...";
 
-                const res = await fetch('/api/battles/create', {
+                const res = await fetch(`${API_BASE}/battles/create`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ userId, amount })
@@ -91,7 +101,6 @@
                 if(result.success) {
                     alert("Challenge set! Intezar karein, jaise hi koi join karega aap redirect ho jayenge.");
                     fetchBattles();
-                    // Naya Logic: Har 3 second mein check karo ki kisi ne join kiya ya nahi
                     startStatusCheck(result.battleId);
                 }
             } catch (err) {
@@ -102,77 +111,76 @@
             }
         }
 
-        // New Function: Creator ke liye background status check
         function startStatusCheck(battleId) {
-    if(!battleId || battleId === 'undefined') return; // Safety check
+            if(!battleId) return;
+            if(pollingInterval) clearInterval(pollingInterval);
+            
+            pollingInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/battles/status/${battleId}`);
+                    const data = await res.json();
 
-    if(pollingInterval) clearInterval(pollingInterval);
-    
-    pollingInterval = setInterval(async () => {
-        try {
-            const res = await fetch(`/api/battles/status/${battleId}`);
-            const data = await res.json();
-
-            if(data.status === 'joined' || data.joiner_id !== null) {
-                clearInterval(pollingInterval);
-                // ID sahi se pass ho rahi hai yahan
-                window.location.href = `/battle-ground.html?id=${battleId}`;
-            }
-        } catch (err) {
-            console.log("Status polling failed...");
+                    if(data.status === 'joined') {
+                        clearInterval(pollingInterval);
+                        window.location.href = `battle-ground.html?id=${battleId}`;
+                    }
+                } catch (err) { console.log("Polling..."); }
+            }, 3000);
         }
-    }, 3000);
-}
 
         async function fetchBattles() {
-            const res = await fetch('/api/battles/list');
-            const battles = await res.json();
-            const container = document.getElementById('battleContainer');
-            container.innerHTML = '';
-
-            if(battles.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:#64748b;">No active challenges. Create one!</div>';
-                return;
-            }
-
-            battles.forEach(battle => {
-                const isMyBattle = battle.creator_id == userId;
+            try {
+                const res = await fetch(`${API_BASE}/battles/list`);
+                const battles = await res.json();
+                const container = document.getElementById('battleContainer');
                 
-                container.innerHTML += `
-                    <div class="battle-card">
-                        <div class="player-info">
-                            <div class="player-img"><i class="fas fa-user"></i></div>
-                            <div>
-                                <div style="font-size: 13px; font-weight: bold;">${battle.username}</div>
-                                <div style="font-size: 11px; color: #94a3b8;">${isMyBattle ? 'Wait for joiner...' : 'Waiting for match...'}</div>
+                if(!battles || battles.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; color:#64748b;">No active challenges. Create one!</div>';
+                    return;
+                }
+
+                container.innerHTML = battles.map(battle => {
+                    const isMyBattle = battle.creator_id == userId;
+                    return `
+                        <div class="battle-card">
+                            <div class="player-info">
+                                <div class="player-img"><i class="fas fa-user"></i></div>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: bold;">${battle.username}</div>
+                                    <div style="font-size: 11px; color: #94a3b8;">${isMyBattle ? 'Wait for joiner...' : 'Waiting for match...'}</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="amount-tag">₹${battle.amount}</div>
+                                <button class="btn-play" ${isMyBattle ? 'disabled style="background:#444; opacity:0.6;"' : ''} 
+                                    onclick="joinBattle(${battle.id}, ${battle.amount})">
+                                    ${isMyBattle ? 'WAITING' : 'PLAY'}
+                                </button>
                             </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div class="amount-tag">₹${battle.amount}</div>
-                            <button class="btn-play" ${isMyBattle ? 'disabled style="background:#444; opacity:0.6;"' : ''} 
-                                onclick="joinBattle(${battle.id}, ${battle.amount})">
-                                ${isMyBattle ? 'WAITING' : 'PLAY'}
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+                    `;
+                }).join('');
+            } catch (err) { console.error("Fetch Battles Error:", err); }
         }
 
         async function joinBattle(battleId, amount) {
-            const balance = parseInt(document.getElementById('myTokens').innerText);
+            const balance = parseFloat(document.getElementById('myTokens').innerText);
             if(amount > balance) return alert("Pehle cash add karein!");
 
             if(confirm(`Kya aap ₹${amount} ki battle join karna chahte hain?`)) {
-                const res = await fetch('/api/battles/join', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId, battleId })
-                });
-                const result = await res.json();
-                if(result.success) {
-                    window.location.href = `/battle-ground.html?id=${battleId}`;
-                }
+                try {
+                    const res = await fetch(`${API_BASE}/battles/join`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId, battleId })
+                    });
+                    const result = await res.json();
+                    if(result.success) {
+                        window.location.href = `battle-ground.html?id=${battleId}`;
+                    } else {
+                        alert(result.error || "Join fail!");
+                    }
+                } catch (e) { alert("Server error!"); }
             }
         }
     </script>

@@ -310,6 +310,37 @@ app.post('/api/withdraw/request', async (req, res) => {
     } catch (err) { await pool.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
 });
 
+
+// UPIGateway Order Create
+app.post('/api/pay/create-order', async (req, res) => {
+    const { amount, userId } = req.body;
+    const client_txn_id = "TXN" + Date.now(); // Unique Transaction ID
+
+    try {
+        const response = await axios.post('https://api.ekqr.in/api/create_order', {
+            "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38", // Screenshot wali Key
+            "client_txn_id": client_txn_id,
+            "amount": amount.toString(),
+            "p_info": "Wallet Topup",
+            "customer_name": "Ludo Player",
+            "customer_email": "user@gmail.com",
+            "customer_mobile": "7079950417",
+            "redirect_url": "https://autotechsolutions25-netizen.github.io/success.html",
+            "udf1": userId.toString() // Ismein UserId save karein taaki baad mein pehchan sakein
+        });
+
+        if (response.data.status) {
+            res.json({ success: true, payment_data: response.data.data });
+        } else {
+            res.status(400).json({ error: response.data.msg });
+        }
+    } catch (err) {
+        res.status(500).json({ error: "Gateway Error" });
+    }
+});
+
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

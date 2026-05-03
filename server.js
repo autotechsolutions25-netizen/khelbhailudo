@@ -12,7 +12,7 @@ const app = express();
 
 // 1. CORS Configuration
 app.use(cors({
-    origin: 'https://autotechsolutions25-netizen.github.io', 
+    origin: ['https://autotechsolutions25-netizen.github.io', 'http://127.0.0.1:5500'], // GitHub aur local dono allow karein
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type']
 }));

@@ -312,17 +312,17 @@ app.post('/api/pay/create-order', async (req, res) => {
         const userRes = await pool.query('SELECT full_name, mobile_no FROM users WHERE id = $1', [userId]);
         const user = userRes.rows[0] || { full_name: "Ludo Player", mobile_no: "7079950417" };
 
-        const response = await axios.post('https://api.ekqr.in/api/create_order', {
-            "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38", 
-            "client_txn_id": client_txn_id,
-            "amount": amount.toString(),
-            "p_info": "Wallet Topup",
-            "customer_name": user.full_name.substring(0, 15), // Naam chota hona chahiye
-            "customer_email": "user@gmail.com",
-            "customer_mobile": user.mobile_no.replace(/\D/g, "").slice(-10), // Asli mobile no
-            "redirect_url": "[https://autotechsolutions25-netizen.github.io/success.html](https://autotechsolutions25-netizen.github.io/success.html)"
-            "udf1": userId.toString()
-        });
+const response = await axios.post('https://api.ekqr.in/api/create_order', {
+    "key": "b306734d-dac5-48ce-bdd3-d08b8b7d7f38",
+    "client_txn_id": client_txn_id,
+    "amount": amount.toString(),
+    "p_info": "Wallet Topup",
+    "customer_name": user.full_name.substring(0, 15),
+    "customer_email": "user@gmail.com",
+    "customer_mobile": user.mobile_no.replace(/\D/g, "").slice(-10),
+    "redirect_url": "https://autotechsolutions25-netizen.github.io/dashboard.html", // Yahan comma dekho
+    "udf1": userId.toString() // Is line se pehle comma missing tha!
+});
 
         console.log("UPIGateway Response:", response.data);
 

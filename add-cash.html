@@ -86,31 +86,28 @@
                 loader.style.display = 'flex';
 
                 // 1. Backend route call karna jo UPIGateway order banaye
-                const res = await fetch(`${BACKEND_URL}/api/pay/create-order`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        amount: amount,
-                        userId: userId 
-                    })
-                });
-                
-const data = await res.json();
+try {
+    const res = await fetch(`${BACKEND_URL}/api/pay/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, userId })
+    });
+    
+    const data = await res.json();
 
-if (data.success && data.payment_data && data.payment_data.payment_url) {
-    window.location.href = data.payment_data.payment_url;
-} else {
-    // Agar koi error hai toh wahi dikhao bajaye 'undefined' error ke
-    alert("Error: " + (data.error || "Payment data incomplete"));
+    if (data.success && data.payment_data && data.payment_data.payment_url) {
+        window.location.href = data.payment_data.payment_url;
+    } else {
+        // Ab undefined error nahi aayega, seedha message dikhega
+        alert("Payment Error: " + (data.error || "Gateway busy hai, thodi der baad koshish karein"));
+        loader.style.display = 'none';
+        btn.disabled = false;
+    }
+} catch (err) {
+    alert("Server connect nahi ho raha hai.");
     loader.style.display = 'none';
     btn.disabled = false;
 }
-            } catch (err) {
-                console.error("Payment Error:", err);
-                alert("Server connection failed. Check if backend is running.");
-                loader.style.display = 'none';
-                btn.disabled = false;
-            }
         }
     </script>
 </body>

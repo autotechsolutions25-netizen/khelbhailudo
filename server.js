@@ -284,17 +284,7 @@ app.post('/api/user/submit-kyc', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 4. Payments (Razorpay)
-const Razorpay = require('razorpay');
-const rzp = new Razorpay({ key_id: 'rzp_test_SflXxOSDMFAolF', key_secret: 'N6Ve21b0cUAJZKnaP7ozPiu8' });
 
-app.post('/api/pay/create-order', async (req, res) => {
-    const { amount } = req.body;
-    try {
-        const order = await rzp.orders.create({ amount: amount * 100, currency: "INR", receipt: "rcpt_" + Date.now() });
-        res.json({ success: true, order });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
 
 // 5. Withdrawals
 app.post('/api/withdraw/request', async (req, res) => {

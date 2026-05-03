@@ -320,7 +320,7 @@ app.post('/api/pay/create-order', async (req, res) => {
             "customer_name": user.full_name.substring(0, 15), // Naam chota hona chahiye
             "customer_email": "user@gmail.com",
             "customer_mobile": user.mobile_no.replace(/\D/g, "").slice(-10), // Asli mobile no
-            "redirect_url": "https://autotechsolutions25-netizen.github.io/dashboard.html",
+            "redirect_url": "[https://autotechsolutions25-netizen.github.io/success.html](https://autotechsolutions25-netizen.github.io/success.html)"
             "udf1": userId.toString()
         });
 

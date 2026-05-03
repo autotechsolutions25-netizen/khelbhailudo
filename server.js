@@ -367,11 +367,12 @@ app.post('/api/webhook/upigateway', async (req, res) => {
 
 
 
-// Admin Login Route - Ise server.js mein add karein
-// --- ADMIN LOGIN ROUTE ---
+// --- ADMIN SYSTEM ROUTES ---
+
+// 1. Admin Login Verification
 app.post('/api/admin/login', (req, res) => {
     const { password } = req.body;
-    const ADMIN_PASSWORD = "Praveen@123"; // Aap ise badal sakte hain
+    const ADMIN_PASSWORD = "Praveen@123"; // Aap ise yahan se badal sakte hain
 
     if (password === ADMIN_PASSWORD) {
         res.json({ success: true, token: "ADMIN_SESSION_ACTIVE" });
@@ -380,7 +381,7 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// --- ADMIN STATS ROUTE (Dashboard ke liye) ---
+// 2. Admin Dashboard Stats
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
         const usersCount = await pool.query('SELECT COUNT(*) FROM users');
@@ -397,7 +398,7 @@ app.get('/api/admin/master-stats', async (req, res) => {
     }
 });
 
-// --- PENDING KYC USERS ROUTE ---
+// 3. Pending Users List (KYC ke liye)
 app.get('/api/admin/pending-users', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM users WHERE is_verified = false ORDER BY created_at DESC');
@@ -407,13 +408,12 @@ app.get('/api/admin/pending-users', async (req, res) => {
     }
 });
 
-
-// --- 2. User ko Approve karne ke liye ---
+// 4. User Approve karne ka Route
 app.post('/api/admin/approve-user', async (req, res) => {
     const { userId } = req.body;
     try {
         await pool.query('UPDATE users SET is_verified = true, kyc_status = \'approved\' WHERE id = $1', [userId]);
-        res.json({ success: true, message: "User approved successfully!" });
+        res.json({ success: true, message: "User approved!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

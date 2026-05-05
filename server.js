@@ -541,22 +541,47 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// 2. Admin Dashboard Stats
+
+// --- ADMIN: Pending Battle Results Fetch Karein ---
+app.get('/api/admin/battles/pending-details', async (req, res) => {
+    try {
+        const query = `
+            SELECT b.*, 
+            u1.username as creator_name, 
+            u2.username as joiner_name 
+            FROM battles b
+            JOIN users u1 ON b.creator_id = u1.id
+            LEFT JOIN users u2 ON b.joiner_id = u2.id
+            WHERE b.status = 'pending_approval' OR (b.status = 'joined' AND b.screenshot_url IS NOT NULL)
+            ORDER BY b.created_at DESC`;
+            
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Admin Battle Fetch Error:", err.message);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// --- ADMIN: Master Stats Update (Count fix karne ke liye) ---
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
-        const usersCount = await pool.query('SELECT COUNT(*) FROM users');
-        const pendingKyc = await pool.query('SELECT COUNT(*) FROM users WHERE is_verified = false');
-        const pendingWithdraw = await pool.query('SELECT COUNT(*) FROM withdrawals WHERE status = \'pending\'');
+        const users = await pool.query('SELECT COUNT(*) FROM users');
+        const kyc = await pool.query('SELECT COUNT(*) FROM users WHERE is_verified = false');
+        const withdraw = await pool.query('SELECT COUNT(*) FROM withdrawals WHERE status = \'pending\'');
+        const battles = await pool.query('SELECT COUNT(*) FROM battles WHERE status = \'pending_approval\'');
         
         res.json({
-            totalUsers: usersCount.rows[0].count,
-            pendingKyc: pendingKyc.rows[0].count,
-            pendingWithdrawals: pendingWithdraw.rows[0].count
+            totalUsers: users.rows[0].count,
+            pendingKyc: kyc.rows[0].count,
+            pendingWithdrawals: withdraw.rows[0].count,
+            pendingBattles: battles.rows[0].count // Ye dashboard par 0 ko fix karega
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 // 3. Pending Users List (KYC ke liye)
 app.get('/api/admin/pending-users', async (req, res) => {

@@ -317,9 +317,9 @@ app.post('/api/battles/join', async (req, res) => {
     const { userId, battleId } = req.body;
 
     try {
-        await pool.query('BEGIN'); // Transaction start
+        await pool.query('BEGIN');
 
-        // 1. Battle check karein aur lock karein taaki koi aur join na kar sake
+        // 1. Battle fetch aur lock (FOR UPDATE zaroori hai)
         const battleRes = await pool.query('SELECT * FROM battles WHERE id = $1 FOR UPDATE', [battleId]);
         const battle = battleRes.rows[0];
 
@@ -330,7 +330,7 @@ app.post('/api/battles/join', async (req, res) => {
 
         if (battle.status !== 'open') {
             await pool.query('ROLLBACK');
-            return res.status(400).json({ success: false, error: "Battle pehle hi full ho chuki hai!" });
+            return res.status(400).json({ success: false, error: "Battle full ho chuki hai!" });
         }
 
         if (battle.creator_id == userId) {
@@ -338,37 +338,40 @@ app.post('/api/battles/join', async (req, res) => {
             return res.status(400).json({ success: false, error: "Aap apni hi battle join nahi kar sakte!" });
         }
 
-        // 2. Joiner ka balance check karein
+        // 2. Joiner balance check
         const userRes = await pool.query('SELECT wallet_balance FROM users WHERE id = $1', [userId]);
         const userBalance = parseFloat(userRes.rows[0].wallet_balance);
+        const battleAmt = parseFloat(battle.amount); // Yahan fix kiya hai
 
-        if (userBalance < parseFloat(battle.amount)) {
+        if (userBalance < battleAmt) {
             await pool.query('ROLLBACK');
             return res.status(400).json({ success: false, error: "Paryapt balance nahi hai!" });
         }
 
-        // 3. Joiner ke paise deduct karein
-        await pool.query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [battle.amount, userId]);
+        // 3. Joiner balance deduct karein
+        await pool.query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [battleAmt, userId]);
 
-        // Joiner ke liye transaction entry
-await pool.query(
-    'INSERT INTO transactions (user_id, amount, status, type) VALUES ($1, $2, $3, $4)', 
-    [userId, battle_amount, 'success', 'battle_joined']
-);
-
-        // 4. Battle update karein (Joiner ID aur Status set karein)
+        // 4. Battle status update
         await pool.query('UPDATE battles SET joiner_id = $1, status = \'joined\' WHERE id = $2', [userId, battleId]);
 
-        await pool.query('COMMIT'); // Database save
-        console.log(`✅ Battle ${battleId} joined by User ${userId}`);
+        // 5. Transaction History entry
+        // Dhyan dein: Agar 'type' column nahi hai toh pehle database mein add karein
+        await pool.query(
+            'INSERT INTO transactions (user_id, amount, status, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)', 
+            [userId, battleAmt, 'success']
+        );
+
+        await pool.query('COMMIT');
+        console.log(`✅ Battle Joined: ${battleId} by User ${userId}`);
         res.json({ success: true });
 
     } catch (err) {
         await pool.query('ROLLBACK');
-        console.error("Join Error:", err.message);
-        res.status(500).json({ success: false, error: "Server error" });
+        console.error("Join Error Details:", err.message); // Render logs mein error dekhein
+        res.status(500).json({ success: false, error: "Server Internal Error: " + err.message });
     }
 });
+
 
 // --- BATTLE STATUS CHECK (Creator ke liye) ---
 app.get('/api/battles/status/:id', async (req, res) => {

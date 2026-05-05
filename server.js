@@ -58,7 +58,7 @@ const initDB = async () => {
             CREATE TABLE IF NOT EXISTS admin_settings (
                 id SERIAL PRIMARY KEY,
                 admin_email TEXT,
-                smtp_password TEXT
+                smtp_password creat
             );
             CREATE TABLE IF NOT EXISTS battles (
                 id SERIAL PRIMARY KEY,
@@ -291,6 +291,26 @@ app.post('/api/battles/create', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// --- BATTLES LIST ROUTE ---
+app.get('/api/battles/list', async (req, res) => {
+    try {
+        // Sirf 'open' status waali battles dikhani hain jisme kisi ne join nahi kiya
+        const result = await pool.query(`
+            SELECT b.*, u.username 
+            FROM battles b 
+            JOIN users u ON b.creator_id = u.id 
+            WHERE b.status = 'open' 
+            ORDER BY b.created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Fetch Battles Error:", err.message);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 
 // 3. Join Challenge
 app.post('/api/battles/join', async (req, res) => {

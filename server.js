@@ -249,6 +249,7 @@ app.get('/api/user/game-history/:id', async (req, res) => {
 app.get('/api/user/transactions/:id', async (req, res) => {
     try {
         const result = await pool.query(
+
             'SELECT * FROM transactions WHERE user_id = $1 ORDER BY created_at DESC', 
             [req.params.id]
         );
@@ -391,15 +392,12 @@ app.get('/api/battles/status/:id', async (req, res) => {
 // A. Battle Details Fetch karna
 app.get('/api/battles/details/:id', async (req, res) => {
     try {
-        const query = `
-            SELECT b.*, 
-            u1.username as creator_name, 
-            u2.username as joiner_name 
-            FROM battles b
-            JOIN users u1 ON b.creator_id = u1.id
-            LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.id = $1`;
-        const result = await pool.query(query, [req.params.id]);
+        const result = await pool.query(`
+            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
+            FROM battles b 
+            JOIN users u1 ON b.creator_id = u1.id 
+            LEFT JOIN users u2 ON b.joiner_id = u2.id 
+            WHERE b.id = $1`, [req.params.id]);
         res.json(result.rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });

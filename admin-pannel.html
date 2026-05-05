@@ -284,15 +284,16 @@
     }
 
     // --- 4. General Stats ---
-    async function updateStats() {
-        try {
-            const res = await fetch(`${API_BASE}/admin/master-stats`);
-            const data = await res.json();
-            document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
-            document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
-            document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
-        } catch (e) {}
-    }
+async function updateStats() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/master-stats`);
+        const data = await res.json();
+        // Dashboard cards update
+        document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
+        document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
+        document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
+    } catch (e) { console.log("Stats error"); }
+}
 
     async function loadAllUsers() {
         const body = document.getElementById('userListBody');

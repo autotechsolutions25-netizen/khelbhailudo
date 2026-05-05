@@ -276,6 +276,15 @@ app.get('/api/battles/list', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 3. Join Challenge
+app.post('/api/battles/join', async (req, res) => {
+    const { userId, battleId } = req.body;
+    try {
+        await pool.query('UPDATE battles SET joiner_id = $1, status = $2 WHERE id = $3', [userId, 'joined', battleId]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/user/submit-kyc', async (req, res) => {
     const { userId, bankAcc, ifsc, upiId, whatsapp } = req.body;
     try {

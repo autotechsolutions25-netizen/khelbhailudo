@@ -285,6 +285,57 @@ app.post('/api/battles/join', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
+// A. Battle Details Fetch karna
+app.get('/api/battles/details/:id', async (req, res) => {
+    try {
+        const query = `
+            SELECT b.*, 
+            u1.username as creator_name, 
+            u2.username as joiner_name 
+            FROM battles b
+            JOIN users u1 ON b.creator_id = u1.id
+            LEFT JOIN users u2 ON b.joiner_id = u2.id
+            WHERE b.id = $1`;
+        const result = await pool.query(query, [req.params.id]);
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// B. Room Code Update karna (Sirf Creator kar sakta hai)
+app.post('/api/battles/update-room', async (req, res) => {
+    const { battleId, roomCode } = req.body;
+    try {
+        await pool.query('UPDATE battles SET room_code = $1, status = $2 WHERE id = $3', 
+        [roomCode, 'playing', battleId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// C. Screenshot Upload Setup (Multer use karein)
+app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
+    const { userId, battleId, status } = req.body;
+    const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
+
+    try {
+        // Status update karein (Admin verify karega tab final winner announce hoga)
+        await pool.query(
+            'UPDATE battles SET result_status = $1, screenshot_url = $2 WHERE id = $3',
+            [status, screenshotPath, battleId]
+        );
+        
+        res.json({ success: true, message: "Result submitted for Admin verification" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
 app.post('/api/user/submit-kyc', async (req, res) => {
     const { userId, bankAcc, ifsc, upiId, whatsapp } = req.body;
     try {

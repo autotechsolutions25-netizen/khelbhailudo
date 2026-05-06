@@ -564,20 +564,24 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
 });
 
 // --- ADMIN: Master Stats Update (Count fix karne ke liye) ---
+// --- ADMIN: Master Stats Logic ---
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
         const users = await pool.query('SELECT COUNT(*) FROM users');
         const kyc = await pool.query('SELECT COUNT(*) FROM users WHERE is_verified = false');
         const withdraw = await pool.query('SELECT COUNT(*) FROM withdrawals WHERE status = \'pending\'');
-        const battles = await pool.query('SELECT COUNT(*) FROM battles WHERE status = \'pending_approval\'');
+        
+        // Is query ko dhyan se dekhein: Ye un battles ko ginta hai jinhe verify karna hai
+        const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval' OR (status = 'joined' AND screenshot_url IS NOT NULL)");
         
         res.json({
-            totalUsers: users.rows[0].count,
-            pendingKyc: kyc.rows[0].count,
-            pendingWithdrawals: withdraw.rows[0].count,
-            pendingBattles: battles.rows[0].count // Ye dashboard par 0 ko fix karega
+            totalUsers: parseInt(users.rows[0].count),
+            pendingKyc: parseInt(kyc.rows[0].count),
+            pendingWithdrawals: parseInt(withdraw.rows[0].count),
+            pendingBattles: parseInt(battles.rows[0].count)
         });
     } catch (err) {
+        console.error("Stats Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });

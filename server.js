@@ -587,6 +587,33 @@ app.get('/api/admin/master-stats', async (req, res) => {
 });
 
 
+// Winner Approve karne aur Paise Transfer karne ka Route
+app.post('/api/admin/battles/verify-winner', async (req, res) => {
+    const { battleId, winnerId } = req.body;
+    try {
+        await pool.query('BEGIN');
+
+        // 1. Battle info nikaalein
+        const battleRes = await pool.query('SELECT amount FROM battles WHERE id = $1', [battleId]);
+        const amount = parseFloat(battleRes.rows[0].amount);
+        const prize = amount * 1.90; // 10% Platform fee kaat kar 90% profit
+
+        // 2. Winner ke account mein paise daalein
+        await pool.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2', [prize, winnerId]);
+
+        // 3. Battle status update karein
+        await pool.query('UPDATE battles SET status = \'completed\', winner_id = $1 WHERE id = $2', [winnerId, battleId]);
+
+        await pool.query('COMMIT');
+        res.json({ success: true, message: "Payment released to winner!" });
+    } catch (err) {
+        await pool.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
 // 3. Pending Users List (KYC ke liye)
 app.get('/api/admin/pending-users', async (req, res) => {
     try {

@@ -109,6 +109,7 @@
     <div class="sidebar" id="adminSidebar">
         <div class="sidebar-brand">Ludo Master</div>
         <div class="nav-item active" id="nav-stats" onclick="showSection('stats')"><i class="fas fa-chart-line"></i> Dashboard</div>
+        <div class="nav-item" id="nav-battles" onclick="showSection('battles')"><i class="fas fa-gamepad"></i> Verify Game Results</div>
         <div class="nav-item" id="nav-kyc" onclick="showSection('kyc')"><i class="fas fa-id-card"></i> Pending KYC Approvals</div>
         <div class="nav-item" id="nav-withdrawals" onclick="showSection('withdrawals')"><i class="fas fa-university"></i> Withdrawals</div>
         <div class="nav-item" id="nav-users" onclick="showSection('users')"><i class="fas fa-users"></i> All Users</div>
@@ -180,6 +181,29 @@
             </div>
         </div>
 
+
+    <!-- Battle Verification Section (YAHAN MISSSING THA) -->
+<div id="section-battles" class="content-card" style="display:none;">
+    <h3><i class="fas fa-gamepad"></i> Verify Game Results (Winners)</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Battle ID</th>
+                    <th>Players (Creator vs Joiner)</th>
+                    <th>Amount</th>
+                    <th>Winning Proof</th>
+                    <th>Action (Approve Winner)</th>
+                </tr>
+            </thead>
+            <tbody id="battleListBody">
+                <tr><td colspan="5" style="text-align:center;">No pending results.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+        
+
         <!-- All Users Section -->
         <div id="section-users" class="content-card" style="display:none;">
             <h3>User Directory</h3>
@@ -202,18 +226,33 @@
             document.getElementById('overlay').classList.toggle('active');
         }
 
-        function showSection(id) {
-            const sections = ['stats', 'users', 'withdrawals', 'kyc'];
-            sections.forEach(s => document.getElementById('section-' + s).style.display = 'none');
-            document.getElementById('section-' + id).style.display = 'block';
-            
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById('nav-' + id).classList.add('active');
+function showSection(id) {
+    // 'battles' ko yahan list mein add kiya gaya hai
+    const sections = ['stats', 'users', 'withdrawals', 'kyc', 'battles']; 
+    
+    sections.forEach(s => {
+        const el = document.getElementById('section-' + s);
+        if(el) el.style.display = 'none'; // Error check: Agar element hai tabhi style change karein
+    });
 
-            if(id === 'kyc') loadPendingKyc();
-            if(id === 'users') loadAllUsers();
-            if(id === 'withdrawals') loadPendingWithdrawals();
-        }
+    const target = document.getElementById('section-' + id);
+    if(target) {
+        target.style.display = 'block';
+    } else {
+        console.error("Section not found: section-" + id);
+    }
+    
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const nav = document.getElementById('nav-' + id);
+    if(nav) nav.classList.add('active');
+
+    // Data load functions
+    if(id === 'kyc') loadPendingKyc();
+    if(id === 'users') loadAllUsers();
+    if(id === 'withdrawals') loadPendingWithdrawals();
+    if(id === 'battles') loadBattles(); // Naya function call
+}
+        
 
         // --- 1. Load Pending KYC with Images ---
         async function loadPendingKyc() {

@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     
-    <style>
+    <style>loadBattles
         :root { --admin-red: #d32f2f; --admin-dark: #1e293b; --bg: #f1f5f9; --green: #22c55e; --accent: #ffd700; --secondary: #3b82f6; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; background: var(--bg); color: #333; overflow-x: hidden; }
 
@@ -223,6 +223,43 @@
                 </tr>
             `).join('');
         }
+
+
+// --- Battle Results Verification (ID MATCH FIX) ---
+async function loadBattles() {
+    const body = document.getElementById('battleListBody');
+    try {
+        const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
+        const data = await res.json();
+        
+        if(!data || data.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center;">No pending game results to verify.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = data.map(b => `
+            <tr>
+                <td>#${b.id}</td>
+                <td><b>P1:</b> ${b.creator_name}<br><b>P2:</b> ${b.joiner_name}</td>
+                <td style="color:var(--admin-red); font-weight:bold;">₹${b.amount}</td>
+                <td>
+                    <img src="${BACKEND_URL_ONLY}${b.screenshot_url}" class="ss-img" onclick="window.open(this.src)" onerror="this.src='https://via.placeholder.com/50x70?text=No+Img'">
+                    <br><small style="color:blue;">User Claim: ${b.result_status || 'N/A'}</small>
+                </td>
+                <td>
+                    <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
+                    <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
+                    <button class="btn btn-warning" onclick="cancelBattle(${b.id})">Cancel/Refund</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) { 
+        console.error("Load Battles Error:", e);
+        body.innerHTML = '<tr><td colspan="5">Error loading battle data.</td></tr>'; 
+    }
+}
+
+        
 
 async function updateStats() {
     try {

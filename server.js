@@ -416,20 +416,22 @@ app.post('/api/battles/update-room', async (req, res) => {
     }
 });
 
-// C. Screenshot Upload Setup (Multer use karein)
+// C. Screenshot Upload Setup (STATUS UPDATE FIX)
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
-    const { userId, battleId, status } = req.body;
+    const { userId, battleId, status } = req.body; // status yahan 'win', 'lost' ya 'cancel' aayega
     const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
 
     try {
-        // Status update karein (Admin verify karega tab final winner announce hoga)
+        // ZAROORI FIX: Status ko 'pending_approval' set karna hoga taaki admin query use pakad sake
         await pool.query(
-            'UPDATE battles SET result_status = $1, screenshot_url = $2 WHERE id = $3',
-            [status, screenshotPath, battleId]
+            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
+            [status, screenshotPath, 'pending_approval', battleId]
         );
         
+        console.log(`✅ Battle ${battleId} submitted for verification by User ${userId}`);
         res.json({ success: true, message: "Result submitted for Admin verification" });
     } catch (err) {
+        console.error("Submit Result Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });

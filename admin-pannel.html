@@ -286,14 +286,32 @@
     // --- 4. General Stats ---
 async function updateStats() {
     try {
+        console.log("Fetching stats from:", `${API_BASE}/admin/master-stats`);
         const res = await fetch(`${API_BASE}/admin/master-stats`);
+        
+        if (!res.ok) {
+            console.error("Backend Error Status:", res.status);
+            return;
+        }
+
         const data = await res.json();
+        console.log("Stats Data Received:", data);
+
         // Dashboard cards update
         document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
         document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
         document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
-    } catch (e) { console.log("Stats error"); }
+        
+        // Agar aapke pass total users ka card hai toh:
+        if(document.getElementById('statTotalUsers')) {
+            document.getElementById('statTotalUsers').innerText = data.totalUsers || 0;
+        }
+    } catch (e) { 
+        console.error("Fetch Stats Failed:", e); 
+    }
 }
+
+    
 
     async function loadAllUsers() {
         const body = document.getElementById('userListBody');

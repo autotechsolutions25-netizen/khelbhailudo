@@ -69,22 +69,28 @@
 
     <div class="main">
         <!-- Dashboard Section -->
-        <div id="section-stats">
-            <div class="stats-grid">
-                <div class="stat-card" onclick="showSection('kyc')">
-                    <h3 id="statPendingKyc">0</h3>
-                    <p>Pending KYC Approvals</p>
-                </div>
-                <div class="stat-card" onclick="showSection('withdrawals')">
-                    <h3 id="statPendingWithdraw">0</h3>
-                    <p>Pending Withdrawals</p>
-                </div>
-                <div class="stat-card" onclick="showSection('users')">
-                    <h3 id="statTotalUsers">0</h3>
-                    <p>Total Registered Users</p>
-                </div>
-            </div>
+<!-- Dashboard Section update -->
+<div id="section-stats">
+    <div class="stats-grid">
+        <!-- Naya Card: Total Users -->
+        <div class="stat-card" onclick="showSection('users')">
+            <h3 id="statTotalUsers">0</h3>
+            <p>Total Registered Users</p>
         </div>
+        <div class="stat-card" onclick="showSection('battles')">
+            <h3 id="statPendingBattles">0</h3>
+            <p>Pending Game Results</p>
+        </div>
+        <div class="stat-card" onclick="showSection('withdrawals')">
+            <h3 id="statPendingWithdraw">0</h3>
+            <p>Pending Withdrawals</p>
+        </div>
+        <div class="stat-card" onclick="showSection('kyc')">
+            <h3 id="statPendingKyc">0</h3>
+            <p>Pending KYC Approvals</p>
+        </div>
+    </div>
+</div>
 
         <!-- KYC Approval Section -->
         <div id="section-kyc" class="content-card" style="display:none;">
@@ -218,13 +224,38 @@
             `).join('');
         }
 
-        async function updateStats() {
-            const res = await fetch(`${API_BASE}/admin/master-stats`);
-            const data = await res.json();
+async function updateStats() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/master-stats`);
+        if (!res.ok) throw new Error("Stats fetch failed");
+        
+        const data = await res.json();
+        
+        // Dashboard cards ko update karna
+        // 1. Total Users card update karein
+        if(document.getElementById('statTotalUsers')) {
             document.getElementById('statTotalUsers').innerText = data.totalUsers || 0;
-            document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
+        }
+        
+        // 2. Pending Game Results
+        if(document.getElementById('statPendingBattles')) {
+            document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
+        }
+        
+        // 3. Pending Withdrawals
+        if(document.getElementById('statPendingWithdraw')) {
             document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
         }
+        
+        // 4. Pending KYC
+        if(document.getElementById('statPendingKyc')) {
+            document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
+        }
+    } catch (e) { 
+        console.error("Stats update failed:", e); 
+    }
+}
+        
 
         function adminLogout() {
             localStorage.removeItem('admin_logged_in');

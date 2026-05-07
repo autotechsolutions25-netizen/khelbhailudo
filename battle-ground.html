@@ -173,7 +173,7 @@ async function uploadWin() {
     const fileInput = document.getElementById('screenshotFile');
     const file = fileInput.files[0];
     
-    if(!file) return alert("Screenshot select karein!");
+    if(!file) return alert("Pehle screenshot select karein!");
 
     const formData = new FormData();
     // 'screenshot' naam wahi hona chahiye jo backend mein upload.single('screenshot') hai
@@ -183,16 +183,21 @@ async function uploadWin() {
     formData.append('status', 'win');
 
     try {
+        // Yahan Content-Type header mat lagana, browser khud set karega boundary ke saath
         const res = await fetch(`${BACKEND_URL}/api/battles/submit-result`, { 
             method: 'POST', 
-            body: formData // Note: Content-Type header mat lagana, browser khud set karega
+            body: formData 
         });
+        
         const result = await res.json();
         if(result.success) { 
-            alert("Result Sent! Admin verify karega."); 
+            alert("Result successfully sent!"); 
             window.location.href = "dashboard.html"; 
+        } else {
+            alert("Error: " + result.error);
         }
     } catch (err) {
+        console.error("Upload failed:", err);
         alert("Upload fail ho gaya. Internet check karein.");
     }
 }

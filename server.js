@@ -100,7 +100,7 @@ const storage = multer.diskStorage({
     destination: './uploads/',
     filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
-const upload = multer({ storage });
+const upload = multer({ dest: 'uploads/' });
 
 // --- OTP Store (EK BAAR DECLARE KIYA HAI) ---
 let otpStore = {}; 
@@ -422,26 +422,31 @@ app.post('/api/battles/update-room', async (req, res) => {
 
 // C. Screenshot Upload Setup
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
-    const { userId, battleId, status } = req.body;
-    
-    // Check karein ki file aayi hai ya nahi
-    const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
-
-    if (!screenshotPath && status === 'win') {
-        return res.status(400).json({ success: false, error: "Screenshot missing!" });
-    }
-
     try {
-        // Status ko 'pending_approval' set karein taaki admin panel mein dikhe
+        const { userId, battleId, status } = req.body;
+        
+        // Check karein ki file aayi ya nahi
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: "File not received" });
+        }
+
+        // Sahi path banayein jo admin panel access kar sake
+        const screenshotPath = `/uploads/${req.file.filename}`;
+
+        // Database mein update karein
         await pool.query(
-            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
-            [status, screenshotPath, 'pending_approval', battleId]
+            `UPDATE battles SET 
+             screenshot_url = $1, 
+             submitted_result = $2, 
+             status = 'pending_approval' 
+             WHERE id = $3`,
+            [screenshotPath, status, battleId]
         );
         
-        res.json({ success: true, message: "Result submitted" });
+        res.json({ success: true, message: "Result updated in DB" });
     } catch (err) {
-        console.error("DB Error:", err.message);
-        res.status(500).json({ error: "Database error" });
+        console.error("Server Error:", err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

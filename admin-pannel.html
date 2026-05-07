@@ -163,8 +163,9 @@
                 const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
                 const data = await res.json();
                 body.innerHTML = data.length ? data.map(b => {
-                    const sPath = b.screenshot_url ? b.screenshot_url.trim() : "";
-                    const fullImg = (sPath && sPath !== "null" && sPath !== "") ? (BASE_URL + sPath) : "";
+const sPath = b.screenshot_url ? b.screenshot_url.trim() : "";
+// Agar sPath '/uploads/123.png' hai, toh BASE_URL + sPath perfect hai
+const fullImg = (sPath && sPath !== "null") ? (BASE_URL + sPath) : "";
 
                     return `
                     <tr>

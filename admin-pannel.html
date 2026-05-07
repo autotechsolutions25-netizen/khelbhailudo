@@ -93,7 +93,7 @@
             <h3>Verify Game Results</h3>
             <div class="table-responsive">
                 <table>
-                    <thead><tr><th>ID</th><th>Players</th><th>Amount</th><th>Proof</th><th>Action</th></tr></thead>
+                    <thead><tr><th>ID</th><th>Players</th><th>Amount</th><th>Proof</th><th>User Claim</th><th>Action</th></tr></thead>
                     <tbody id="battleListBody"></tbody>
                 </table>
             </div>
@@ -163,9 +163,8 @@
                 const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
                 const data = await res.json();
                 body.innerHTML = data.length ? data.map(b => {
-                    // FIX: Safe Image URL Construction
                     const sPath = b.screenshot_url ? b.screenshot_url.trim() : "";
-                    const fullImg = (sPath && sPath !== "null") ? (BASE_URL + sPath) : "";
+                    const fullImg = (sPath && sPath !== "null" && sPath !== "") ? (BASE_URL + sPath) : "";
 
                     return `
                     <tr>
@@ -173,14 +172,15 @@
                         <td>${b.creator_name} vs ${b.joiner_name}</td>
                         <td>₹${b.amount}</td>
                         <td>
-                            ${fullImg ? `<img src="${fullImg}" class="ss-img" onclick="window.open(this.src)">` : `<span style="color:red; font-size:10px;">No Proof Uploaded</span>`}
+                            ${fullImg ? `<img src="${fullImg}" class="ss-img" onclick="window.open(this.src)" onerror="this.parentElement.innerHTML='Error Loading'">` : `<span style="color:red; font-size:10px;">No Proof</span>`}
                         </td>
+                        <td style="text-transform:uppercase; font-weight:bold; color:blue;">${b.result_status || 'N/A'}</td>
                         <td>
                             <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
                             <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
                         </td>
                     </tr>`;
-                }).join('') : '<tr><td colspan="5" align="center">No pending results.</td></tr>';
+                }).join('') : '<tr><td colspan="6" align="center">No pending results.</td></tr>';
             } catch (e) { console.error("Battles Load Error:", e); }
         }
 

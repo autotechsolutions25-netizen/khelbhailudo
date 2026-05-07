@@ -205,37 +205,59 @@
             fetchProfile();
         };
 
-        async function fetchProfile() {
-            try {
-                // Route changed to match standard /api/user/details or /api/user/profile
-                const res = await fetch(`${API_BASE}/user/details/${userId}`);
-                const data = await res.json();
-                
-                document.getElementById('userName').innerText = data.full_name || data.username || "User";
-                document.getElementById('sideName').innerText = data.full_name || data.username || "User";
-                document.getElementById('cashBal').innerText = data.wallet_balance ?? 0;
-                document.getElementById('earnBal').innerText = data.earning_balance ?? 0;
-                
-                currentWinningBal = data.earning_balance ?? 0;
-                kycStatus = data.kyc_status;
+async function fetchProfile() {
+    try {
+        console.log("Fetching profile for User ID:", userId);
+        const res = await fetch(`${API_BASE}/user/details/${userId}`);
 
-                document.getElementById('profUser').innerText = data.username || "N/A";
-                document.getElementById('profMob').innerText = data.mobile_no || "N/A";
-                document.getElementById('profDate').innerText = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
-
-                const kycContainer = document.getElementById('kycStatusContainer');
-                if(kycStatus === 'approved') {
-                    kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified!</b></div>`;
-                } else if (kycStatus === 'pending') {
-                    kycContainer.innerHTML = `<div class="kyc-status-box kyc-pending"><i class="fas fa-clock"></i> <b>KYC Under Review</b></div>`;
-                } else {
-                    kycContainer.innerHTML = `<button class="game-btn" onclick="location.href='kyc.html'">Update KYC / Bank Details</button>`;
-                }
-            } catch (err) {
-                console.error("Profile Fetch Error:", err);
-            }
+        // 1. Agar Bad Gateway (502) aaye toh 3 second baad fir koshish karein
+        if (res.status === 502) {
+            console.warn("Server starting up (502)... retrying in 3s");
+            setTimeout(fetchProfile, 3000);
+            return;
         }
 
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+        const data = await res.json();
+        if (!data) return;
+
+        // 2. Data Update Logic with Null Safety
+        const name = data.full_name || data.username || "User";
+        if(document.getElementById('userName')) document.getElementById('userName').innerText = name;
+        if(document.getElementById('sideName')) document.getElementById('sideName').innerText = name;
+        
+        if(document.getElementById('cashBal')) document.getElementById('cashBal').innerText = data.wallet_balance ?? 0;
+        if(document.getElementById('earnBal')) document.getElementById('earnBal').innerText = data.earning_balance ?? 0;
+
+        currentWinningBal = data.earning_balance ?? 0;
+        kycStatus = data.kyc_status;
+
+        if(document.getElementById('profUser')) document.getElementById('profUser').innerText = data.username || "N/A";
+        if(document.getElementById('profMob')) document.getElementById('profMob').innerText = data.mobile_no || "N/A";
+        
+        const dateStr = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
+        if(document.getElementById('profDate')) document.getElementById('profDate').innerText = dateStr;
+
+        const kycContainer = document.getElementById('kycStatusContainer');
+        if (kycContainer) {
+            if (kycStatus === 'approved') {
+                kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified!</b></div>`;
+            } else if (kycStatus === 'pending') {
+                kycContainer.innerHTML = `<div class="kyc-status-box kyc-pending"><i class="fas fa-clock"></i> <b>KYC Under Review</b></div>`;
+            } else {
+                kycContainer.innerHTML = `<button class="game-btn" onclick="location.href='kyc.html'">Update KYC / Bank Details</button>`;
+            }
+        }
+    } catch (err) {
+        console.error("Profile Fetch Error:", err);
+        // Agar connection fail ho jaye toh 5 second baad retry
+        setTimeout(fetchProfile, 5000);
+    }
+}
+
+
+        
         async function proceedWithdraw() {
             const amountInput = document.getElementById('withAmt').value;
             const amount = parseFloat(amountInput);

@@ -12,7 +12,10 @@
         :root { --admin-red: #d32f2f; --admin-dark: #1e293b; --bg: #f1f5f9; --green: #22c55e; --accent: #ffd700; --secondary: #3b82f6; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; background: var(--bg); color: #333; overflow-x: hidden; }
 
-        .mobile-header { display: none; width: 100%; background: var(--admin-dark); color: white; padding: 15px; position: fixed; top: 0; z-index: 1001; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box; }
+        .mobile-header { 
+            display: none; width: 100%; background: var(--admin-dark); color: white; 
+            padding: 15px; position: fixed; top: 0; z-index: 1001; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box;
+        }
 
         .sidebar { width: 260px; height: 100vh; background: var(--admin-dark); color: white; position: fixed; display: flex; flex-direction: column; transition: 0.3s; z-index: 1000; }
         .sidebar-brand { padding: 20px; font-size: 20px; font-weight: bold; border-bottom: 1px solid #334155; text-align: center; color: var(--admin-red); }
@@ -28,25 +31,27 @@
         .stat-card p { margin: 5px 0 0; color: #64748b; font-weight: 600; }
 
         .content-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; overflow-x: auto; }
+        
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 800px; }
         th { text-align: left; background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; font-size: 13px; }
         td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
         
-        .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 11px; margin: 2px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; white-space: nowrap; margin: 2px; }
         .btn-success { background: #22c55e; color: white; }
         .btn-danger { background: #ef4444; color: white; }
         .btn-warning { background: #f59e0b; color: white; }
-        .ss-img { width: 60px; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; }
-        
+        .ss-img { width: 60px; height: 100px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; }
+
         @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px) {
-            .mobile-header { display: flex; width: 100%; background: var(--admin-dark); height: 60px; position: fixed; top: 0; left: 0; z-index: 1001; justify-content: space-between; align-items: center; padding: 0 15px; box-sizing: border-box; }
+            .mobile-header { display: flex; width: 100%; background: var(--admin-dark); color: white; padding: 0 15px; height: 60px; position: fixed; top: 0; left: 0; z-index: 1001; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); box-sizing: border-box; }
             .sidebar { left: -260px; }
             .sidebar.active { left: 0; }
             .main { margin-left: 0; width: 100%; padding: 80px 15px 20px; }
             .stats-grid { grid-template-columns: 1fr; }
         }
+
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
         .overlay.active { display: block; }
     </style>
@@ -64,7 +69,7 @@
         <div class="sidebar-brand">Ludo Master</div>
         <div class="nav-item active" id="nav-stats" onclick="showSection('stats')"><i class="fas fa-chart-line"></i> Dashboard</div>
         <div class="nav-item" id="nav-battles" onclick="showSection('battles')"><i class="fas fa-gamepad"></i> Verify Results</div>
-        <div class="nav-item" id="nav-kyc" onclick="showSection('kyc')"><i class="fas fa-id-card"></i> KYC Approvals</div>
+        <div class="nav-item" id="nav-kyc" onclick="showSection('kyc')"><i class="fas fa-id-card"></i> Pending KYC Approvals</div>
         <div class="nav-item" id="nav-withdrawals" onclick="showSection('withdrawals')"><i class="fas fa-university"></i> Withdrawals</div>
         <div class="nav-item" id="nav-users" onclick="showSection('users')"><i class="fas fa-users"></i> All Users</div>
         <div class="nav-item nav-logout" onclick="adminLogout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
@@ -93,7 +98,7 @@
         </div>
 
         <div id="section-kyc" class="content-card" style="display:none;">
-            <h3>Pending KYC Approvals</h3>
+            <h3><i class="fas fa-id-card"></i> Pending KYC Approvals</h3>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -105,7 +110,7 @@
         </div>
 
         <div id="section-withdrawals" class="content-card" style="display:none;">
-            <h3>Withdrawal Requests</h3>
+            <h3><i class="fas fa-university"></i> Withdrawal Requests</h3>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -117,7 +122,7 @@
         </div>
 
         <div id="section-battles" class="content-card" style="display:none;">
-            <h3>Verify Game Results</h3>
+            <h3><i class="fas fa-gamepad"></i> Verify Game Results</h3>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -142,9 +147,9 @@
     </div>
 
     <script>
-        // --- 1. CONFIGURATION (GLOBAL DECLARATION) ---
-        const BACKEND_URL_ONLY = "https://khel-bhai-luso-backend-service.onrender.com";
-        const API_BASE = BACKEND_URL_ONLY + "/api";
+        // --- 1. CONFIGURATION (Global Scope) ---
+        const BACKEND_URL = "https://khel-bhai-luso-backend-service.onrender.com";
+        const API_BASE = BACKEND_URL + "/api";
 
         function toggleSidebar() {
             document.getElementById('adminSidebar').classList.toggle('active');
@@ -178,12 +183,12 @@
                 body.innerHTML = users.length ? users.map(u => `
                     <tr>
                         <td><b>${u.full_name}</b></td>
-                        <td><img src="${BACKEND_URL_ONLY}${u.aadhar_front_url}" class="ss-img" onclick="window.open(this.src)"></td>
-                        <td><img src="${BACKEND_URL_ONLY}${u.aadhar_back_url}" class="ss-img" onclick="window.open(this.src)"></td>
+                        <td><img src="${u.aadhar_front_url ? BACKEND_URL + u.aadhar_front_url : 'https://via.placeholder.com/60x100'}" class="ss-img" onclick="window.open(this.src)"></td>
+                        <td><img src="${u.aadhar_back_url ? BACKEND_URL + u.aadhar_back_url : 'https://via.placeholder.com/60x100'}" class="ss-img" onclick="window.open(this.src)"></td>
                         <td><small>${u.upi_id || 'N/A'}</small></td>
-                        <td><button class="btn btn-success" onclick="approveUser(${u.id})">OK</button></td>
+                        <td><button class="btn btn-success" onclick="approveUser(${u.id})">Approve</button></td>
                     </tr>`).join('') : '<tr><td colspan="5" align="center">No pending KYC.</td></tr>';
-            } catch (e) { body.innerHTML = 'Error loading KYC.'; }
+            } catch (e) { body.innerHTML = 'Error loading KYC data.'; }
         }
 
         async function loadBattles() {
@@ -192,8 +197,7 @@
                 const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
                 const data = await res.json();
                 body.innerHTML = data.length ? data.map(b => {
-                    // ROBUST URL CONSTRUCTION
-                    const imgSrc = b.screenshot_url ? (BACKEND_URL_ONLY + b.screenshot_url) : 'https://via.placeholder.com/100x150?text=No+Img';
+                    const imgSrc = b.screenshot_url ? (BACKEND_URL + b.screenshot_url) : 'https://via.placeholder.com/100x150?text=No+Img';
                     return `
                     <tr>
                         <td>#${b.id}</td>
@@ -201,22 +205,24 @@
                         <td>₹${b.amount}</td>
                         <td><img src="${imgSrc}" class="ss-img" onclick="window.open(this.src)"></td>
                         <td>
-                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">P1</button>
-                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">P2</button>
+                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
+                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
                         </td>
                     </tr>`;
-                }).join('') : '<tr><td colspan="5" align="center">No pending results.</td></tr>';
-            } catch (e) { body.innerHTML = 'Error loading battles.'; }
+                }).join('') : '<tr><td colspan="5" align="center">No pending game results.</td></tr>';
+            } catch (e) { body.innerHTML = 'Error loading battle data.'; }
         }
 
         async function approveWinner(battleId, winnerId) {
-            if(!confirm("Release payment?")) return;
-            const res = await fetch(`${API_BASE}/admin/battles/verify-winner`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ battleId, winnerId })
-            });
-            if(res.ok) { alert("Success!"); loadBattles(); updateStats(); }
+            if(!confirm("Winner ko paise transfer karein?")) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/battles/verify-winner`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ battleId, winnerId })
+                });
+                if(res.ok) { alert("Payment Released!"); loadBattles(); updateStats(); }
+            } catch (e) { alert("Payment error."); }
         }
 
         async function updateStats() {
@@ -227,7 +233,7 @@
                 document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
                 document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
                 document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
-            } catch (e) { console.error("Stats Error"); }
+            } catch (e) { console.error("Stats fetch error"); }
         }
 
         async function loadAllUsers() {
@@ -244,7 +250,7 @@
 
         window.onload = () => {
             if (localStorage.getItem('admin_logged_in') !== 'true') {
-                const p = prompt("Admin Pass:");
+                const p = prompt("Admin Password:");
                 if(p === "Praveen@123") localStorage.setItem('admin_logged_in', 'true');
                 else window.location.href = "index.html";
             }

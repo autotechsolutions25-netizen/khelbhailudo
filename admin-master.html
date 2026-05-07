@@ -385,6 +385,28 @@ async function updateStats() {
         console.error("Stats update failed:", e); 
     }
 }
+
+
+
+async function approveWinner(battleId, winnerId) {
+    if(!confirm("Kya aap sure hain? Winner ko paise transfer ho jayenge.")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/battles/verify-winner`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ battleId, winnerId })
+        });
+        const result = await res.json();
+        if(result.success) {
+            alert("Payment Released Successfully!");
+            loadBattles(); // Table refresh karein
+            updateStats(); // Dashboard refresh karein
+        }
+    } catch (err) {
+        alert("Error releasing payment.");
+    }
+}
+        
         
 
         function adminLogout() {

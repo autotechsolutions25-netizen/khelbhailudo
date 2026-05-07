@@ -424,29 +424,22 @@ app.post('/api/battles/update-room', async (req, res) => {
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
     try {
         const { userId, battleId, status } = req.body;
-        
-        // Check karein ki file aayi ya nahi
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: "File not received" });
-        }
+        const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
 
-        // Sahi path banayein jo admin panel access kar sake
-        const screenshotPath = `/uploads/${req.file.filename}`;
+        // "submitted_result" ko badal kar "result_status" kar diya hai
+        const query = `
+            UPDATE battles 
+            SET result_status = $1, 
+                screenshot_url = $2, 
+                status = 'pending_approval' 
+            WHERE id = $3`;
 
-        // Database mein update karein
-        await pool.query(
-            `UPDATE battles SET 
-             screenshot_url = $1, 
-             submitted_result = $2, 
-             status = 'pending_approval' 
-             WHERE id = $3`,
-            [screenshotPath, status, battleId]
-        );
+        await pool.query(query, [status, screenshotPath, battleId]);
         
-        res.json({ success: true, message: "Result updated in DB" });
+        res.json({ success: true, message: "Result submitted successfully!" });
     } catch (err) {
-        console.error("Server Error:", err);
-        res.status(500).json({ success: false, error: err.message });
+        console.error("Database Update Error:", err.message);
+        res.status(500).json({ success: false, error: "Database error: " + err.message });
     }
 });
 

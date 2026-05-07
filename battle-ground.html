@@ -169,23 +169,33 @@
         function openModal() { document.getElementById('winModal').style.display = 'block'; }
         function closeModal() { document.getElementById('winModal').style.display = 'none'; }
 
-        async function uploadWin() {
-            const file = document.getElementById('screenshotFile').files[0];
-            if(!file) return alert("Screenshot select karein!");
+async function uploadWin() {
+    const fileInput = document.getElementById('screenshotFile');
+    const file = fileInput.files[0];
+    
+    if(!file) return alert("Screenshot select karein!");
 
-            const formData = new FormData();
-            formData.append('screenshot', file);
-            formData.append('userId', userId);
-            formData.append('battleId', battleId);
-            formData.append('status', 'win');
+    const formData = new FormData();
+    // 'screenshot' naam wahi hona chahiye jo backend mein upload.single('screenshot') hai
+    formData.append('screenshot', file); 
+    formData.append('userId', userId);
+    formData.append('battleId', battleId);
+    formData.append('status', 'win');
 
-            const res = await fetch(`${BACKEND_URL}/api/battles/submit-result`, { method: 'POST', body: formData });
-            const result = await res.json();
-            if(result.success) { 
-                alert("Result Sent! Admin verify karega."); 
-                window.location.href = "dashboard.html"; 
-            }
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/battles/submit-result`, { 
+            method: 'POST', 
+            body: formData // Note: Content-Type header mat lagana, browser khud set karega
+        });
+        const result = await res.json();
+        if(result.success) { 
+            alert("Result Sent! Admin verify karega."); 
+            window.location.href = "dashboard.html"; 
         }
+    } catch (err) {
+        alert("Upload fail ho gaya. Internet check karein.");
+    }
+}
 
         async function submitDirectResult(status) {
             if(!confirm("Kya aap sure hain?")) return;

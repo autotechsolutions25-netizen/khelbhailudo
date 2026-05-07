@@ -12,9 +12,9 @@ const app = express();
 
 // 1. CORS Configuration
 app.use(cors({
-    origin: ['https://autotechsolutions25-netizen.github.io', 'http://127.0.0.1:5500'], // GitHub aur local dono allow karein
+    origin: '*', // Ye har jagah se request allow kar dega, CORS error khatam!
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type']
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // 2. Body Parsers

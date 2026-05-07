@@ -165,7 +165,7 @@
                 body.innerHTML = data.length ? data.map(b => {
 const sPath = b.screenshot_url ? b.screenshot_url.trim() : "";
 // Agar sPath '/uploads/123.png' hai, toh BASE_URL + sPath perfect hai
-const fullImg = (sPath && sPath !== "null") ? (BASE_URL + sPath) : "";
+const fullImg = b.screenshot_url;
 
                     return `
                     <tr>

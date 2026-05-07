@@ -111,14 +111,7 @@ const initDB = async () => {
 initDB();
 
 // --- MULTER CONFIGURATION (Merged & Fixed) ---
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
+const storage = multer.memoryStorage(); // ✅ Disk ke bajaye memory use karein
 const upload = multer({ storage: storage });
 
 // --- OTP Store (EK BAAR DECLARE KIYA HAI) ---
@@ -439,26 +432,44 @@ app.post('/api/battles/update-room', async (req, res) => {
     }
 });
 
-// C. Screenshot Upload Setup
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// Naya submit-result route
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
     try {
         const { userId, battleId, status } = req.body;
-        const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
+        const file = req.file;
 
-        // "submitted_result" ko badal kar "result_status" kar diya hai
-        const query = `
-            UPDATE battles 
-            SET result_status = $1, 
-                screenshot_url = $2, 
-                status = 'pending_approval' 
-            WHERE id = $3`;
+        if (!file) return res.status(400).json({ error: "Screenshot missing" });
 
-        await pool.query(query, [status, screenshotPath, battleId]);
-        
-        res.json({ success: true, message: "Result submitted successfully!" });
+        // Supabase Storage mein upload karein
+        const fileName = `${Date.now()}_${file.originalname}`;
+        const { data, error } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, file.buffer, {
+                contentType: file.mimetype
+            });
+
+        if (error) throw error;
+
+        // Public URL generate karein
+        const { data: urlData } = supabase.storage
+            .from('screenshots')
+            .getPublicUrl(fileName);
+
+        const publicUrl = urlData.publicUrl;
+
+        // Database mein publicUrl save karein
+        await pool.query(
+            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
+            [status, publicUrl, 'pending_approval', battleId]
+        );
+
+        res.json({ success: true, message: "Uploaded to Supabase Storage!" });
     } catch (err) {
-        console.error("Database Update Error:", err.message);
-        res.status(500).json({ success: false, error: "Database error: " + err.message });
+        console.error("Supabase Upload Error:", err.message);
+        res.status(500).json({ error: err.message });
     }
 });
 

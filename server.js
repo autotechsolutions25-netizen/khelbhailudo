@@ -2,32 +2,46 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const SibApiV3Sdk = require('sib-api-v3-sdk'); 
-const axios = require('axios'); // Fast2SMS ke liye zaroori
+const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-const app = express();
+const app = express(); // ✅ Pehle app define karna zaroori hai
 
-// 1. CORS Configuration
+// --- SAFE FOLDER CREATION LOGIC ---
+const uploadDir = path.join(__dirname, 'uploads');
+
+try {
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        console.log("✅ Uploads folder created!");
+    } else {
+        const stats = fs.statSync(uploadDir);
+        if (!stats.isDirectory()) {
+            fs.unlinkSync(uploadDir);
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log("⚠️ Removed file and created uploads folder");
+        }
+    }
+} catch (err) {
+    console.error("❌ Folder Creation Error:", err.message);
+}
+
+// --- MIDDLEWARES ---
 app.use(cors({
-    origin: '*', // Sab allow kar do
+    origin: '*', 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 2. Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// 3. Static Folders
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadDir)); // ✅ uploadDir use karein
 
-if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
-
-// 4. Database Connection
+// --- DATABASE CONNECTION ---
 const pool = require('./db');
 
 // --- DATABASE TABLES INITIALIZATION ---
@@ -58,7 +72,7 @@ const initDB = async () => {
             CREATE TABLE IF NOT EXISTS admin_settings (
                 id SERIAL PRIMARY KEY,
                 admin_email TEXT,
-                smtp_password creat
+                smtp_password TEXT -- ✅ Fix: Typo 'creat' hataya
             );
             CREATE TABLE IF NOT EXISTS battles (
                 id SERIAL PRIMARY KEY,
@@ -96,11 +110,16 @@ const initDB = async () => {
 };
 initDB();
 
+// --- MULTER CONFIGURATION (Merged & Fixed) ---
 const storage = multer.diskStorage({
-    destination: './uploads/',
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
 });
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: storage });
 
 // --- OTP Store (EK BAAR DECLARE KIYA HAI) ---
 let otpStore = {}; 

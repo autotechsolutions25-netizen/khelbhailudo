@@ -416,23 +416,28 @@ app.post('/api/battles/update-room', async (req, res) => {
     }
 });
 
-// C. Screenshot Upload Setup (STATUS UPDATE FIX)
+// C. Screenshot Upload Setup
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
-    const { userId, battleId, status } = req.body; // status yahan 'win', 'lost' ya 'cancel' aayega
+    const { userId, battleId, status } = req.body;
+    
+    // Check karein ki file aayi hai ya nahi
     const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
 
+    if (!screenshotPath && status === 'win') {
+        return res.status(400).json({ success: false, error: "Screenshot missing!" });
+    }
+
     try {
-        // ZAROORI FIX: Status ko 'pending_approval' set karna hoga taaki admin query use pakad sake
+        // Status ko 'pending_approval' set karein taaki admin panel mein dikhe
         await pool.query(
             'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
             [status, screenshotPath, 'pending_approval', battleId]
         );
         
-        console.log(`✅ Battle ${battleId} submitted for verification by User ${userId}`);
-        res.json({ success: true, message: "Result submitted for Admin verification" });
+        res.json({ success: true, message: "Result submitted" });
     } catch (err) {
-        console.error("Submit Result Error:", err.message);
-        res.status(500).json({ error: err.message });
+        console.error("DB Error:", err.message);
+        res.status(500).json({ error: "Database error" });
     }
 });
 

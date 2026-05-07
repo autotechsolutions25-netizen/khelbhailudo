@@ -35,7 +35,8 @@
         .btn-success { background: #22c55e; color: white; }
         .btn-danger { background: #ef4444; color: white; }
         .btn-warning { background: #f59e0b; color: white; }
-        .ss-img { width: 60px; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; }
+        .ss-img { width: 70px; height: 110px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; transition: 0.2s; }
+        .ss-img:hover { transform: scale(1.1); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
         @media (max-width: 768px) {
             .mobile-header { display: flex; width: 100%; background: var(--admin-dark); height: 60px; position: fixed; top: 0; left: 0; z-index: 1001; justify-content: space-between; align-items: center; padding: 0 15px; box-sizing: border-box; }
@@ -163,38 +164,48 @@
                 const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
                 const data = await res.json();
                 body.innerHTML = data.length ? data.map(b => {
-const sPath = b.screenshot_url ? b.screenshot_url.trim() : "";
-// Agar sPath '/uploads/123.png' hai, toh BASE_URL + sPath perfect hai
-const fullImg = b.screenshot_url;
+                    // Logic: Agar URL Supabase ki hai (http se start ho rhi hai) toh wahi rakho
+                    // Agar sirf path hai toh BASE_URL jodo
+                    let fullImg = b.screenshot_url;
+                    if (fullImg && !fullImg.startsWith('http')) {
+                        fullImg = BASE_URL + fullImg;
+                    }
 
                     return `
                     <tr>
                         <td>#${b.id}</td>
-                        <td>${b.creator_name} vs ${b.joiner_name}</td>
-                        <td>₹${b.amount}</td>
+                        <td><b>P1:</b> ${b.creator_name}<br><b>P2:</b> ${b.joiner_name || 'N/A'}</td>
+                        <td style="color:var(--admin-red); font-weight:bold;">₹${b.amount}</td>
                         <td>
-                            ${fullImg ? `<img src="${fullImg}" class="ss-img" onclick="window.open(this.src)" onerror="this.parentElement.innerHTML='Error Loading'">` : `<span style="color:red; font-size:10px;">No Proof</span>`}
+                            ${fullImg ? `<img src="${fullImg}" class="ss-img" onclick="window.open(this.src)" onerror="this.src='https://via.placeholder.com/100x150?text=Error+Loading'">` : `<span style="color:#666; font-size:11px;">No Proof Uploaded</span>`}
                         </td>
                         <td style="text-transform:uppercase; font-weight:bold; color:blue;">${b.result_status || 'N/A'}</td>
                         <td>
                             <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
                             <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
+                            <button class="btn btn-warning" onclick="alert('Under Development')">Refund</button>
                         </td>
                     </tr>`;
-                }).join('') : '<tr><td colspan="6" align="center">No pending results.</td></tr>';
+                }).join('') : '<tr><td colspan="6" align="center" style="padding:20px;">Sab clear hai! Koi pending result nahi hai.</td></tr>';
             } catch (e) { console.error("Battles Load Error:", e); }
         }
 
         async function approveWinner(battleId, winnerId) {
-            if(!confirm("Release payment?")) return;
+            if(!confirm("Kya aap sure hain? Winner ke wallet mein paise chale jayenge.")) return;
             try {
                 const res = await fetch(`${API_BASE}/admin/battles/verify-winner`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ battleId, winnerId })
                 });
-                if(res.ok) { alert("Released!"); loadBattles(); updateStats(); }
-            } catch (e) { alert("Server error."); }
+                if(res.ok) { 
+                    alert("✅ Payment Released Successfully!"); 
+                    loadBattles(); 
+                    updateStats(); 
+                } else {
+                    alert("❌ Error: Payment fail ho gayi.");
+                }
+            } catch (e) { alert("Server error connection failed."); }
         }
 
         async function updateStats() {
@@ -205,7 +216,7 @@ const fullImg = b.screenshot_url;
                 document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
                 document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
                 document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
-            } catch (e) { console.log("Stats fetch failed"); }
+            } catch (e) { console.log("Stats update failed"); }
         }
 
         async function loadPendingKyc() {
@@ -213,25 +224,47 @@ const fullImg = b.screenshot_url;
             try {
                 const res = await fetch(`${API_BASE}/admin/pending-users`);
                 const users = await res.json();
-                body.innerHTML = users.map(u => {
-                    const fImg = u.aadhar_front_url ? (BASE_URL + u.aadhar_front_url) : "";
-                    const bImg = u.aadhar_back_url ? (BASE_URL + u.aadhar_back_url) : "";
-                    return `
+                body.innerHTML = users.length ? users.map(u => `
                     <tr>
                         <td><b>${u.full_name}</b><br><small>${u.mobile_no}</small></td>
-                        <td>${fImg ? `<img src="${fImg}" class="ss-img" onclick="window.open(this.src)">` : "N/A"}</td>
-                        <td>${bImg ? `<img src="${bImg}" class="ss-img" onclick="window.open(this.src)">` : "N/A"}</td>
-                        <td><button class="btn btn-success" onclick="approveUser(${u.id})">Approve</button></td>
-                    </tr>`;
-                }).join('');
-            } catch (e) { console.log("KYC error"); }
+                        <td><img src="${u.aadhar_front_url ? (BASE_URL + u.aadhar_front_url) : 'https://via.placeholder.com/60x90'}" class="ss-img" onclick="window.open(this.src)"></td>
+                        <td><img src="${u.aadhar_back_url ? (BASE_URL + u.aadhar_back_url) : 'https://via.placeholder.com/60x90'}" class="ss-img" onclick="window.open(this.src)"></td>
+                        <td><button class="btn btn-success" onclick="approveUser(${u.id})">Verify KYC</button></td>
+                    </tr>`) : '<tr><td colspan="4" align="center">Koi KYC pending nahi hai.</td></tr>';
+            } catch (e) { console.log("KYC Load Error"); }
+        }
+
+        async function approveUser(userId) {
+            try {
+                const res = await fetch(`${API_BASE}/admin/approve-user`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId })
+                });
+                if(res.ok) { alert("Verified!"); loadPendingKyc(); updateStats(); }
+            } catch (e) { alert("Error approving user."); }
         }
 
         async function loadAllUsers() {
             const body = document.getElementById('userListBody');
-            const res = await fetch(`${API_BASE}/admin/users/list`);
-            const data = await res.json();
-            body.innerHTML = data.map(u => `<tr><td>#${u.id}</td><td>${u.username}</td><td>${u.mobile_no}</td><td>₹${u.wallet_balance}</td><td>${u.is_verified ? 'V':'P'}</td></tr>`).join('');
+            try {
+                const res = await fetch(`${API_BASE}/admin/users/list`);
+                const data = await res.json();
+                body.innerHTML = data.map(u => `
+                    <tr>
+                        <td>#${u.id}</td>
+                        <td>${u.username}</td>
+                        <td>${u.mobile_no}</td>
+                        <td>₹${u.wallet_balance}</td>
+                        <td><span style="color:${u.is_verified ? 'green' : 'red'}">${u.is_verified ? 'Verified' : 'Pending'}</span></td>
+                    </tr>`).join('');
+            } catch (e) { }
+        }
+
+        async function loadPendingWithdrawals() {
+            const body = document.getElementById('withdrawBody');
+            // Backend endpoint check karna padega, abhi ke liye placeholder
+            body.innerHTML = '<tr><td colspan="4" align="center">Fetching withdrawals...</td></tr>';
         }
 
         function adminLogout() {
@@ -241,11 +274,15 @@ const fullImg = b.screenshot_url;
 
         window.onload = () => {
             if (localStorage.getItem('admin_logged_in') !== 'true') {
-                const p = prompt("Admin Pass:");
-                if(p === "Praveen@123") localStorage.setItem('admin_logged_in', 'true');
-                else window.location.href = "index.html";
+                const p = prompt("Admin Security Key:");
+                if(p === "Praveen@123") {
+                    localStorage.setItem('admin_logged_in', 'true');
+                } else {
+                    window.location.href = "index.html";
+                }
             }
             updateStats();
+            showSection('stats');
         };
     </script>
 </body>

@@ -279,18 +279,48 @@ app.post('/api/battles/update-room', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 12. Submit Result (Supabase Storage Fix)
+// Server.js mein submit-result route ko update karein
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
     try {
         const { userId, battleId, status } = req.body;
         if (!req.file) return res.status(400).json({ error: "Screenshot missing" });
-        const fileName = `${Date.now()}_${req.file.originalname}`;
-        const { error } = await supabase.storage.from('screenshots').upload(fileName, req.file.buffer, { contentType: req.file.mimetype });
-        if (error) throw error;
-        const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(fileName);
-        await pool.query('UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4', [status, urlData.publicUrl, 'pending_approval', battleId]);
-        res.json({ success: true, message: "Uploaded to Supabase Storage!" });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+
+        // Naya Unique File Name
+        const fileExt = path.extname(req.file.originalname);
+        const fileName = `${Date.now()}${fileExt}`;
+
+        // Supabase mein upload karein
+        const { data, error } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true
+            });
+
+        if (error) {
+            console.error("Supabase Upload Error:", error);
+            throw error;
+        }
+
+        // Public URL nikaalein
+        const { data: urlData } = supabase.storage
+            .from('screenshots')
+            .getPublicUrl(fileName);
+
+        const publicUrl = urlData.publicUrl;
+        console.log("Image Public URL:", publicUrl);
+
+        // Database mein save karein
+        await pool.query(
+            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
+            [status, publicUrl, 'pending_approval', battleId]
+        );
+
+        res.json({ success: true, message: "Uploaded to Supabase!", url: publicUrl });
+    } catch (err) {
+        console.error("Final Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 13. KYC Submission

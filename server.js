@@ -12,7 +12,7 @@ const app = express();
 
 // 1. CORS Configuration
 app.use(cors({
-    origin: '*', // Ye har jagah se request allow kar dega, CORS error khatam!
+    origin: '*', // Sab allow kar do
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -225,14 +225,18 @@ app.post('/api/verify-login', async (req, res) => {
 // --- 1. User Profile Detail (Naam aur Balance ke liye) ---
 app.get('/api/user/details/:id', async (req, res) => {
     try {
+        const { id } = req.params;
         const result = await pool.query(
-            'SELECT full_name, wallet_balance, earning_balance FROM users WHERE id = $1', 
-            [req.params.id]
+            'SELECT username, full_name, mobile_no, wallet_balance, earning_balance, kyc_status, created_at FROM users WHERE id = $1', 
+            [id]
         );
-        if (result.rows.length > 0) res.json(result.rows[0]);
-        else res.status(404).json({ error: "User not found" });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        if (result.rows.length === 0) return res.status(404).json({ error: "User not found" });
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
+
 
 // --- 2. Game History (Play Ludo/Win click ke liye) ---
 app.get('/api/user/game-history/:id', async (req, res) => {

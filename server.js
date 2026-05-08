@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -7,38 +8,20 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js'); // ✅ Sirf ek baar yahan declare kiya hai
-require('dotenv').config();
 
 const app = express();
 
 // --- SUPABASE CLIENT SETUP ---
 const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_KEY || '');
 
-// --- SAFE FOLDER CREATION LOGIC ---
+// --- SAFE FOLDER CREATION ---
 const uploadDir = path.join(__dirname, 'uploads');
-try {
-    if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-        console.log("✅ Uploads folder created!");
-    } else {
-        const stats = fs.statSync(uploadDir);
-        if (!stats.isDirectory()) {
-            fs.unlinkSync(uploadDir);
-            fs.mkdirSync(uploadDir, { recursive: true });
-            console.log("⚠️ Fixed uploads folder");
-        }
-    }
-} catch (err) {
-    console.error("❌ Folder Creation Error:", err.message);
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 // --- MIDDLEWARES ---
-app.use(cors({
-    origin: '*', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -52,62 +35,27 @@ const initDB = async () => {
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                full_name TEXT,
-                email TEXT UNIQUE,
-                mobile_no TEXT UNIQUE,
-                username TEXT UNIQUE,
-                password TEXT,
-                aadhar_front_url TEXT,
-                aadhar_back_url TEXT,
-                is_verified BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                terms_accepted BOOLEAN DEFAULT FALSE,
-                wallet_balance DECIMAL DEFAULT 0,
-                earning_balance DECIMAL DEFAULT 0,
-                bank_account_no TEXT,
-                ifsc_code TEXT,
-                upi_id TEXT,
-                whatsapp_no TEXT,
-                kyc_status TEXT DEFAULT 'not_submitted',
-                kyc_reject_reason TEXT
+                id SERIAL PRIMARY KEY, full_name TEXT, email TEXT UNIQUE, mobile_no TEXT UNIQUE, username TEXT UNIQUE, password TEXT,
+                is_verified BOOLEAN DEFAULT FALSE, wallet_balance DECIMAL DEFAULT 0, earning_balance DECIMAL DEFAULT 0,
+                terms_accepted BOOLEAN DEFAULT FALSE, kyc_status TEXT DEFAULT 'not_submitted'
             );
             CREATE TABLE IF NOT EXISTS battles (
-                id SERIAL PRIMARY KEY,
-                creator_id INTEGER,
-                joiner_id INTEGER,
-                amount DECIMAL,
-                room_code TEXT,
-                status TEXT,
-                result_status TEXT,
-                screenshot_url TEXT,
-                winner_id INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id SERIAL PRIMARY KEY, creator_id INTEGER, joiner_id INTEGER, amount DECIMAL, room_code TEXT, status TEXT,
+                result_status TEXT, screenshot_url TEXT, winner_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS transactions (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                amount DECIMAL,
-                utr_no TEXT,
-                status TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id SERIAL PRIMARY KEY, user_id INTEGER, amount DECIMAL, utr_no TEXT, status TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS withdrawals (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                amount DECIMAL,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id SERIAL PRIMARY KEY, user_id INTEGER, amount DECIMAL, status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("✅ Database Tables Ready.");
-    } catch (err) {
-        console.error("❌ Database Init Error:", err.message);
-    }
+        console.log("✅ Database Ready.");
+    } catch (err) { console.error("❌ DB Init Error:", err.message); }
 };
 initDB();
 
-// --- MULTER CONFIGURATION ---
+// --- MULTER STORAGE ---
 const storage = multer.memoryStorage(); 
 const upload = multer({ storage: storage });
 

@@ -6,13 +6,17 @@ const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js'); // Supabase client import
 require('dotenv').config();
 
-const app = express(); // ✅ Pehle app define karna zaroori hai
+const app = express();
+
+// --- SUPABASE CLIENT SETUP ---
+// Dhyan rahe Render ke environment variables mein SUPABASE_URL aur SUPABASE_KEY hona chahiye
+const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_KEY || '');
 
 // --- SAFE FOLDER CREATION LOGIC ---
 const uploadDir = path.join(__dirname, 'uploads');
-
 try {
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
@@ -72,7 +76,7 @@ const initDB = async () => {
             CREATE TABLE IF NOT EXISTS admin_settings (
                 id SERIAL PRIMARY KEY,
                 admin_email TEXT,
-                smtp_password TEXT -- ✅ Fix: Typo 'creat' hataya
+                smtp_password TEXT
             );
             CREATE TABLE IF NOT EXISTS battles (
                 id SERIAL PRIMARY KEY,
@@ -110,12 +114,11 @@ const initDB = async () => {
 };
 initDB();
 
-// --- MULTER CONFIGURATION (Merged & Fixed) ---
-const storage = multer.memoryStorage(); // ✅ Disk ke bajaye memory use karein
+// --- MULTER CONFIGURATION ---
+const storage = multer.memoryStorage(); 
 const upload = multer({ storage: storage });
 
-// --- OTP Store (EK BAAR DECLARE KIYA HAI) ---
-let otpStore = {}; 
+let otpStore = {};
 
 // --- ROUTES ---
 

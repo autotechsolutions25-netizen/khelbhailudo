@@ -12,7 +12,6 @@ require('dotenv').config();
 const app = express();
 
 // --- SUPABASE CLIENT SETUP ---
-// Render settings se variables uthayega
 const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_KEY || '');
 
 // --- SAFE FOLDER CREATION LOGIC ---

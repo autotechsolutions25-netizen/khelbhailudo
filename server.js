@@ -6,13 +6,13 @@ const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js'); // Supabase client import
+const { createClient } = require('@supabase/supabase-js'); // ✅ Sirf ek baar yahan declare kiya hai
 require('dotenv').config();
 
 const app = express();
 
 // --- SUPABASE CLIENT SETUP ---
-// Dhyan rahe Render ke environment variables mein SUPABASE_URL aur SUPABASE_KEY hona chahiye
+// Render settings se variables uthayega
 const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_KEY || '');
 
 // --- SAFE FOLDER CREATION LOGIC ---
@@ -26,7 +26,7 @@ try {
         if (!stats.isDirectory()) {
             fs.unlinkSync(uploadDir);
             fs.mkdirSync(uploadDir, { recursive: true });
-            console.log("⚠️ Removed file and created uploads folder");
+            console.log("⚠️ Fixed uploads folder");
         }
     }
 } catch (err) {
@@ -43,7 +43,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadDir));
 
 // --- DATABASE CONNECTION ---
 const pool = require('./db');
@@ -73,11 +73,6 @@ const initDB = async () => {
                 kyc_status TEXT DEFAULT 'not_submitted',
                 kyc_reject_reason TEXT
             );
-            CREATE TABLE IF NOT EXISTS admin_settings (
-                id SERIAL PRIMARY KEY,
-                admin_email TEXT,
-                smtp_password TEXT
-            );
             CREATE TABLE IF NOT EXISTS battles (
                 id SERIAL PRIMARY KEY,
                 creator_id INTEGER,
@@ -102,8 +97,7 @@ const initDB = async () => {
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 amount DECIMAL,
-                status TEXT,
-                reject_reason TEXT,
+                status TEXT DEFAULT 'pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);

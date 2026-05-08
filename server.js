@@ -508,25 +508,22 @@ app.post('/api/admin/login', (req, res) => {
 
 
 // --- ADMIN: Pending Battle Results Fetch Karein ---
-app.get('/api/admin/battles/pending-details', async (req, res) => {
+app.get('/api/admin/battles/pending', async (req, res) => {
     try {
         const query = `
-            SELECT b.*, 
-            u1.username as creator_name, 
-            u2.username as joiner_name 
+            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
             FROM battles b
             JOIN users u1 ON b.creator_id = u1.id
-            LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status = 'pending_approval' OR (b.status = 'joined' AND b.screenshot_url IS NOT NULL)
+            JOIN users u2 ON b.joiner_id = u2.id
+            WHERE b.status = 'joined' AND b.result_status IS NOT NULL
             ORDER BY b.created_at DESC`;
-            
         const result = await pool.query(query);
         res.json(result.rows);
     } catch (err) {
-        console.error("Admin Battle Fetch Error:", err.message);
-        res.status(500).json({ error: "Server error" });
+        res.status(500).json({ error: err.message });
     }
 });
+
 
 // --- ADMIN: Master Stats Update (Count fix karne ke liye) ---
 // --- ADMIN: Master Stats Logic ---

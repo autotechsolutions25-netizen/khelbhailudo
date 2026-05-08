@@ -382,43 +382,23 @@ const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // Naya submit-result route
+// C. Screenshot Upload Setup (Multer use karein)
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
+    const { userId, battleId, status } = req.body;
+    const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
+
     try {
-        const { userId, battleId, status } = req.body;
-        const file = req.file;
-
-        if (!file) return res.status(400).json({ error: "Screenshot missing" });
-
-        // Supabase Storage mein upload karein
-        const fileName = `${Date.now()}_${file.originalname}`;
-        const { data, error } = await supabase.storage
-            .from('screenshots')
-            .upload(fileName, file.buffer, {
-                contentType: file.mimetype
-            });
-
-        if (error) throw error;
-
-        // Public URL generate karein
-        const { data: urlData } = supabase.storage
-            .from('screenshots')
-            .getPublicUrl(fileName);
-
-        const publicUrl = urlData.publicUrl;
-
-        // Database mein publicUrl save karein
+        // Status update karein (Admin verify karega tab final winner announce hoga)
         await pool.query(
-            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
-            [status, publicUrl, 'pending_approval', battleId]
+            'UPDATE battles SET result_status = $1, screenshot_url = $2 WHERE id = $3',
+            [status, screenshotPath, battleId]
         );
-
-        res.json({ success: true, message: "Uploaded to Supabase Storage!" });
+        
+        res.json({ success: true, message: "Result submitted for Admin verification" });
     } catch (err) {
-        console.error("Supabase Upload Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
-
 
 
 app.post('/api/user/submit-kyc', async (req, res) => {

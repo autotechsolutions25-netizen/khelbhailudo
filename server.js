@@ -508,105 +508,62 @@ app.post('/api/admin/login', (req, res) => {
 
 
 // --- ADMIN: Pending Battle Results Fetch Karein ---
-app.get('/api/admin/battles/pending', async (req, res) => {
+app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
-        const query = `
-            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
-            FROM battles b
-            JOIN users u1 ON b.creator_id = u1.id
-            JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status = 'joined' AND b.result_status IS NOT NULL
-            ORDER BY b.created_at DESC`;
-        const result = await pool.query(query);
+        const result = await pool.query("SELECT b.*, u1.username as creator_name, u2.username as joiner_name FROM battles b JOIN users u1 ON b.creator_id = u1.id LEFT JOIN users u2 ON b.joiner_id = u2.id WHERE b.status = 'pending_approval' OR (b.status = 'joined' AND b.screenshot_url IS NOT NULL) ORDER BY b.created_at DESC");
         res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
 
-
-// --- ADMIN: Master Stats Update (Count fix karne ke liye) ---
-// --- ADMIN: Master Stats Logic ---
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
         const users = await pool.query('SELECT COUNT(*) FROM users');
-        const kyc = await pool.query('SELECT COUNT(*) FROM users WHERE is_verified = false');
-        const withdraw = await pool.query('SELECT COUNT(*) FROM withdrawals WHERE status = \'pending\'');
-        
-        // Is query ko dhyan se dekhein: Ye un battles ko ginta hai jinhe verify karna hai
+        const kyc = await pool.query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
+        const withdraw = await pool.query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
         const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval' OR (status = 'joined' AND screenshot_url IS NOT NULL)");
-        
         res.json({
             totalUsers: parseInt(users.rows[0].count),
             pendingKyc: parseInt(kyc.rows[0].count),
             pendingWithdrawals: parseInt(withdraw.rows[0].count),
             pendingBattles: parseInt(battles.rows[0].count)
         });
-    } catch (err) {
-        console.error("Stats Error:", err.message);
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
-// Winner Approve karne aur Paise Transfer karne ka Route
 app.post('/api/admin/battles/verify-winner', async (req, res) => {
     const { battleId, winnerId } = req.body;
     try {
         await pool.query('BEGIN');
-
-        // 1. Battle info nikaalein
         const battleRes = await pool.query('SELECT amount FROM battles WHERE id = $1', [battleId]);
         const amount = parseFloat(battleRes.rows[0].amount);
-        const prize = amount * 1.90; // 10% Platform fee kaat kar 90% profit
-
-        // 2. Winner ke account mein paise daalein
+        const prize = amount * 1.90;
         await pool.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2', [prize, winnerId]);
-
-        // 3. Battle status update karein
-        await pool.query('UPDATE battles SET status = \'completed\', winner_id = $1 WHERE id = $2', [winnerId, battleId]);
-
+        await pool.query("UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2", [winnerId, battleId]);
         await pool.query('COMMIT');
-        res.json({ success: true, message: "Payment released to winner!" });
-    } catch (err) {
-        await pool.query('ROLLBACK');
-        res.status(500).json({ error: err.message });
-    }
+        res.json({ success: true });
+    } catch (err) { await pool.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
 });
 
-
-
-// 3. Pending Users List (KYC ke liye)
 app.get('/api/admin/pending-users', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM users WHERE is_verified = false ORDER BY created_at DESC');
+        const result = await pool.query("SELECT * FROM users WHERE kyc_status = 'pending' ORDER BY created_at DESC");
         res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 4. User Approve karne ka Route
 app.post('/api/admin/approve-user', async (req, res) => {
     const { userId } = req.body;
     try {
-        await pool.query('UPDATE users SET is_verified = true, kyc_status = \'approved\' WHERE id = $1', [userId]);
-        res.json({ success: true, message: "User approved!" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        await pool.query("UPDATE users SET is_verified = true, kyc_status = 'approved' WHERE id = $1", [userId]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
-
-// 3. Pending Users List (New User ke liye)
 app.get('/api/admin/users/list', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, full_name, username, mobile_no, wallet_balance, is_verified FROM users ORDER BY id DESC');
         res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 

@@ -84,6 +84,42 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
     }
 });
 
+// ==========================================
+// 🚀 LOGIN ROUTES (FIXED)
+// ==========================================
+
+// User Login (Firebase/Mobile)
+app.post('/api/verify-login-firebase', async (req, res) => {
+    let { mobile } = req.body;
+    console.log("Login attempt for mobile:", mobile); // Render logs mein dikhega
+    try {
+        if (!mobile) return res.status(400).json({ error: "Mobile number missing" });
+
+        // Mobile number cleaning (Sirf aakhri 10 digits)
+        let cleanMobile = mobile.toString().replace(/\D/g, "").slice(-10);
+        
+        const userRes = await pool.query('SELECT id, terms_accepted, is_verified FROM users WHERE mobile_no LIKE $1', [`%${cleanMobile}%`]);
+        
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "Aap registered nahi hain!" });
+        }
+
+        const user = userRes.rows[0];
+        if (!user.is_verified) {
+            return res.status(403).json({ success: false, error: "Account approval pending hai!" });
+        }
+
+        res.json({ 
+            success: true, 
+            userId: user.id, 
+            termsAccepted: user.terms_accepted 
+        });
+    } catch (err) {
+        console.error("Login Error:", err.message);
+        res.status(500).json({ success: false, error: "Server Error: " + err.message });
+    }
+});
+
 // 2. Admin: Get Pending Users
 app.get('/api/admin/pending-users', async (req, res) => {
     try {

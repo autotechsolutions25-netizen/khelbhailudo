@@ -171,9 +171,15 @@ async function loadBattles() {
                 <td>#${b.id}</td>
                 <td>${b.creator_name} vs ${b.joiner_name}</td>
                 <td>₹${b.amount}</td>
-                <td>
-                    ${fullImg ? `<img src="${fullImg}" class="ss-img" onclick="window.open(this.src)" onerror="this.onerror=null; this.src='https://via.placeholder.com/60x90?text=Error';">` : `<span style="color:red; font-size:10px;">No Proof</span>`}
-                </td>
+<td>
+    ${fullImg ? `
+        <a href="${fullImg}" target="_blank">
+            <img src="${fullImg}" class="ss-img" 
+                 onerror="this.src='https://via.placeholder.com/60x90?text=Reload'; console.log('Failed URL:', this.src);">
+        </a>
+        <br><small style="font-size:8px;">Click to view</small>
+    ` : `<span style="color:red; font-size:10px;">No Proof</span>`}
+</td>
                 <td style="text-transform:uppercase; font-weight:bold; color:blue;">${b.result_status || 'N/A'}</td>
                 <td>
                     <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>

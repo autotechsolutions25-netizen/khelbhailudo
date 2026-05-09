@@ -386,30 +386,61 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
     try {
         const { userId, battleId, status } = req.body;
-        let publicUrl = null;
+        console.log(`Processing result for Battle: ${battleId}, User: ${userId}`);
 
-        if (req.file) {
-            const fileName = `${Date.now()}_battle.png`;
-            const { error: upError } = await supabase.storage
-                .from('screenshots')
-                .upload(fileName, req.file.buffer, { contentType: req.file.mimetype });
-
-            if (upError) throw upError;
-
-            const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(fileName);
-            publicUrl = urlData.publicUrl;
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: "No screenshot file received" });
         }
 
-        // Status ko 'pending_approval' set karein taaki Admin ko dikhe
-        await pool.query(
-            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
-            [status, publicUrl, 'pending_approval', battleId]
+        // 1. File ka unique naam banayein
+        const fileName = `${Date.now()}_battle_${battleId}.png`;
+
+        // 2. Supabase Storage mein upload karein
+        const { data: uploadData, error: upError } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, req.file.buffer, { 
+                contentType: req.file.mimetype,
+                upsert: true 
+            });
+
+        if (upError) {
+            console.error("Supabase Upload Error:", upError.message);
+            throw upError;
+        }
+
+        // 3. Public URL nikaalein (Wait karein taaki NULL na aaye)
+        const { data: urlData } = supabase.storage
+            .from('screenshots')
+            .getPublicUrl(fileName);
+
+        const finalPublicUrl = urlData.publicUrl;
+        console.log("Generated Public URL:", finalPublicUrl);
+
+        // 4. DATABASE UPDATE (Sabse important step)
+        // Yahan 'pending_approval' status set karna zaroori hai taaki Admin ko dikhe
+        const updateResult = await pool.query(
+            `UPDATE battles 
+             SET result_status = $1, 
+                 screenshot_url = $2, 
+                 status = $3,
+                 winner_id = CASE WHEN $1 = 'won' THEN $4 ELSE winner_id END
+             WHERE id = $5`,
+            [status, finalPublicUrl, 'pending_approval', userId, battleId]
         );
 
-        res.json({ success: true, message: "Result submitted successfully!" });
+        if (updateResult.rowCount === 0) {
+            throw new Error("Battle record not found in database");
+        }
+
+        res.json({ 
+            success: true, 
+            message: "Proof submitted and waiting for admin approval!",
+            url: finalPublicUrl 
+        });
+
     } catch (err) {
-        console.error("Upload Error:", err.message);
-        res.status(500).json({ error: err.message });
+        console.error("Submission Crash Error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

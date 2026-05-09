@@ -175,19 +175,16 @@ async function uploadWin() {
     
     if(!file) return alert("Pehle screenshot select karein!");
 
-    const formData = new FormData();
-    // 'screenshot' naam wahi hona chahiye jo backend mein upload.single('screenshot') hai
-    formData.append('screenshot', file); 
-    formData.append('userId', userId);
-    formData.append('battleId', battleId);
-    formData.append('status', 'win');
+const formData = new FormData();
+formData.append('screenshot', fileInput.files[0]); // File object check karein
+formData.append('userId', userId);
+formData.append('battleId', battleId);
+formData.append('status', 'won');
 
-    try {
-        // Yahan Content-Type header mat lagana, browser khud set karega boundary ke saath
-        const res = await fetch(`${BACKEND_URL}/api/battles/submit-result`, { 
-            method: 'POST', 
-            body: formData 
-        });
+await fetch(`${API_BASE}/battles/submit-result`, {
+    method: 'POST',
+    body: formData // Note: Ismein headers set mat karna, browser apne aap boundary set karega
+});
         
         const result = await res.json();
         if(result.success) { 

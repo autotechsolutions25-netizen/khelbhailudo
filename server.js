@@ -393,20 +393,18 @@ app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, 
         }
 
         // 1. File ka unique naam banayein
-        const fileName = `${Date.now()}_battle_${battleId}.png`;
+const fileName = `${Date.now()}_battle_${battleId}.png`;
 
-        // 2. Supabase Storage mein upload karein
-        const { data: uploadData, error: upError } = await supabase.storage
-            .from('screenshots')
-            .upload(fileName, req.file.buffer, { 
-                contentType: req.file.mimetype,
-                upsert: true 
-            });
+// Upload with explicit options
+const { data: uploadData, error: upError } = await supabase.storage
+    .from('screenshots')
+    .upload(fileName, req.file.buffer, { 
+        contentType: 'image/png', // ✅ Format batana zaroori hai
+        cacheControl: '3600',
+        upsert: true 
+    });
 
-        if (upError) {
-            console.error("Supabase Upload Error:", upError.message);
-            throw upError;
-        }
+if (upError) throw upError;
 
         // 3. Public URL nikaalein (Wait karein taaki NULL na aaye)
         const { data: urlData } = supabase.storage

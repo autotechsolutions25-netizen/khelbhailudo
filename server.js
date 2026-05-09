@@ -384,18 +384,31 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 // Naya submit-result route
 // C. Screenshot Upload Setup (Multer use karein)
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
-    const { userId, battleId, status } = req.body;
-    const screenshotPath = req.file ? `/uploads/${req.file.filename}` : null;
-
     try {
-        // Status update karein (Admin verify karega tab final winner announce hoga)
+        const { userId, battleId, status } = req.body;
+        let publicUrl = null;
+
+        if (req.file) {
+            const fileName = `${Date.now()}_battle.png`;
+            const { error: upError } = await supabase.storage
+                .from('screenshots')
+                .upload(fileName, req.file.buffer, { contentType: req.file.mimetype });
+
+            if (upError) throw upError;
+
+            const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(fileName);
+            publicUrl = urlData.publicUrl;
+        }
+
+        // Status ko 'pending_approval' set karein taaki Admin ko dikhe
         await pool.query(
-            'UPDATE battles SET result_status = $1, screenshot_url = $2 WHERE id = $3',
-            [status, screenshotPath, battleId]
+            'UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3 WHERE id = $4',
+            [status, publicUrl, 'pending_approval', battleId]
         );
-        
-        res.json({ success: true, message: "Result submitted for Admin verification" });
+
+        res.json({ success: true, message: "Result submitted successfully!" });
     } catch (err) {
+        console.error("Upload Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -510,9 +523,19 @@ app.post('/api/admin/login', (req, res) => {
 // --- ADMIN: Pending Battle Results Fetch Karein ---
 app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
-        const result = await pool.query("SELECT b.*, u1.username as creator_name, u2.username as joiner_name FROM battles b JOIN users u1 ON b.creator_id = u1.id LEFT JOIN users u2 ON b.joiner_id = u2.id WHERE b.status = 'pending_approval' OR (b.status = 'joined' AND b.screenshot_url IS NOT NULL) ORDER BY b.created_at DESC");
+        const query = `
+            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
+            FROM battles b
+            JOIN users u1 ON b.creator_id = u1.id
+            LEFT JOIN users u2 ON b.joiner_id = u2.id
+            WHERE b.status IN ('pending_approval', 'playing', 'completed')
+            ORDER BY b.created_at DESC`;
+            
+        const result = await pool.query(query);
         res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: "Server error" }); }
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
+    }
 });
 
 app.get('/api/admin/master-stats', async (req, res) => {

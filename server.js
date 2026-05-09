@@ -552,6 +552,7 @@ app.post('/api/admin/login', (req, res) => {
 
 
 // --- ADMIN: Pending Battle Results Fetch Karein ---
+// Is query ko server.js mein update karein
 app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
         const query = `
@@ -559,7 +560,7 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
             FROM battles b
             JOIN users u1 ON b.creator_id = u1.id
             LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status IN ('pending_approval', 'playing', 'completed')
+            WHERE b.status = 'pending_approval' 
             ORDER BY b.created_at DESC`;
             
         const result = await pool.query(query);

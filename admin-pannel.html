@@ -163,6 +163,7 @@ async function loadBattles() {
     try {
         const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
         const data = await res.json();
+        
         body.innerHTML = data.length ? data.map(b => {
             const fullImg = b.screenshot_url ? b.screenshot_url.trim() : null;
 
@@ -175,9 +176,10 @@ async function loadBattles() {
                     ${fullImg ? `
                         <div style="text-align:center;">
                             <a href="${fullImg}" target="_blank" style="text-decoration:none;">
-                                <img src="${fullImg}" class="ss-img" style="border:1px solid #ccc; width:60px; height:80px; display:block; margin:auto;" 
+                                <img src="${fullImg}" class="ss-img" 
+                                     style="border:1px solid #ccc; width:60px; height:80px; display:block; margin:auto;" 
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                <span style="display:none; color:blue; font-size:11px; font-weight:bold;">🖼️ View Proof</span>
+                                <div style="display:none; color:blue; font-size:11px; font-weight:bold;">🖼️ View Proof</div>
                             </a>
                         </div>
                     ` : `<span style="color:red; font-size:10px;">No Proof</span>`}
@@ -191,7 +193,7 @@ async function loadBattles() {
         }).join('') : '<tr><td colspan="6" align="center">No pending results.</td></tr>';
     } catch (e) { 
         console.error("Battles Load Error:", e);
-        body.innerHTML = '<tr><td colspan="6" align="center" style="color:red;">Error loading battles. Check Console.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" align="center" style="color:red;">Error loading battles.</td></tr>';
     }
 }
 

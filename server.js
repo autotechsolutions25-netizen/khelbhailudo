@@ -613,16 +613,24 @@ app.get('/api/admin/master-stats', async (req, res) => {
     try {
         const users = await pool.query('SELECT COUNT(*) FROM users');
         const kyc = await pool.query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
-        const withdraw = await pool.query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
-        const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval' OR (status = 'joined' AND screenshot_url IS NOT NULL)");
+        
+        // FIX: Withdrawals count 'transactions' table se nikalein jahan type 'withdrawal' ho
+        const withdraw = await pool.query("SELECT COUNT(*) FROM transactions WHERE type = 'withdrawal' AND status = 'pending'");
+        
+        const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval'");
+        
         res.json({
             totalUsers: parseInt(users.rows[0].count),
             pendingKyc: parseInt(kyc.rows[0].count),
             pendingWithdrawals: parseInt(withdraw.rows[0].count),
             pendingBattles: parseInt(battles.rows[0].count)
         });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error("Stats Error:", err.message);
+        res.status(500).json({ error: err.message }); 
+    }
 });
+
 
 app.post('/api/admin/battles/verify-winner', async (req, res) => {
     const { battleId, winnerId } = req.body;
@@ -717,17 +725,20 @@ app.post('/api/admin/reject-kyc', async (req, res) => {
 // 1. Pending Withdrawals Fetch karna
 app.get('/api/admin/withdrawals/pending', async (req, res) => {
     try {
+        // Transactions table se pending withdrawals nikalna
         const result = await pool.query(`
-            SELECT w.*, u.username, u.mobile_no, u.upi_id 
-            FROM transactions w 
-            JOIN users u ON w.user_id = u.id 
-            WHERE w.type = 'withdrawal' AND w.status = 'pending'
-            ORDER BY w.created_at DESC`);
+            SELECT t.*, u.username, u.mobile_no, u.upi_id 
+            FROM transactions t
+            JOIN users u ON t.user_id = u.id 
+            WHERE t.type = 'withdrawal' AND t.status = 'pending'
+            ORDER BY t.created_at DESC`);
+            
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 // 2. Withdrawal Approve karna
 app.post('/api/admin/withdrawals/approve', async (req, res) => {

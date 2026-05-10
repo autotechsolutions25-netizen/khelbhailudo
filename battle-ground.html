@@ -182,36 +182,40 @@
         function openModal() { document.getElementById('winModal').style.display = 'block'; }
         function closeModal() { document.getElementById('winModal').style.display = 'none'; }
 
-        async function uploadWin() {
-            const fileInput = document.getElementById('screenshotFile');
-            const file = fileInput.files[0];
-            
-            if(!file) return alert("Photo select karein!");
+async function uploadWin() {
+    const fileInput = document.getElementById('screenshotFile');
+    const file = fileInput.files[0]; // File check karein
+    
+    if(!file) {
+        return alert("Pehle screenshot select karein!");
+    }
 
-            const formData = new FormData();
-            formData.append('screenshot', file);
-            formData.append('userId', userId);
-            formData.append('battleId', battleId);
-            formData.append('status', 'won');
+    const formData = new FormData();
+    // CRITICAL: Key ka naam 'screenshot' hi hona chahiye
+    formData.append('screenshot', file); 
+    formData.append('userId', userId);
+    formData.append('battleId', battleId);
+    formData.append('status', 'won');
 
-            try {
-                const res = await fetch(`${API_BASE}/battles/submit-result`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await res.json();
-                if(result.success) { 
-                    alert("Result successfully sent! Admin verify karega."); 
-                    window.location.href = "dashboard.html"; 
-                } else {
-                    alert("Error: " + (result.error || "Upload failed"));
-                }
-            } catch (err) {
-                console.error("Upload failed:", err);
-                alert("Internet connection check karein.");
-            }
+    try {
+        const res = await fetch(`${API_BASE}/battles/submit-result`, {
+            method: 'POST',
+            body: formData // Note: Header mein Content-Type mat dena
+        });
+        
+        const result = await res.json();
+        if(result.success) { 
+            alert("Result successfully sent!"); 
+            window.location.href = "dashboard.html"; 
+        } else {
+            // Agar backend se "File nahi mili!" aa raha hai, toh yahan alert dikhega
+            alert("Error: " + result.error);
         }
+    } catch (err) {
+        console.error("Upload failed:", err);
+        alert("Internet Connection check karein!!!.");
+    }
+}
 
         async function submitDirectResult(status) {
             if(!confirm("Kya aap sure hain?")) return;

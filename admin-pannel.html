@@ -314,6 +314,50 @@ async function rejectUser(userId) {
     }
 }
 
+
+        async function loadPendingWithdrawals() {
+    const body = document.getElementById('withdrawBody');
+    try {
+        const res = await fetch(`${API_BASE}/admin/withdrawals/pending`);
+        const data = await res.json();
+        
+        body.innerHTML = data.length ? data.map(w => `
+            <tr>
+                <td style="text-align:left;">
+                    <b>${w.username}</b><br>
+                    <small>${w.mobile_no}</small><br>
+                    <span style="font-size:10px; color:blue;">UPI: ${w.upi_id || 'N/A'}</span>
+                </td>
+                <td>₹${w.amount}</td>
+                <td style="color:var(--admin-red); font-weight:bold;">
+                    ₹${(w.amount * 0.95).toFixed(2)} 
+                    <br><small style="font-size:9px; color:#666;">(After 5% Fee)</small>
+                </td>
+                <td>
+                    <button class="btn btn-success" onclick="approveWithdraw(${w.id})">Approve</button>
+                    <button class="btn btn-danger" onclick="rejectWithdraw(${w.id})">Reject</button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="4" align="center">No pending withdrawals.</td></tr>';
+    } catch (e) {
+        console.error("Withdrawal Load Error:", e);
+        body.innerHTML = '<tr><td colspan="4" align="center" style="color:red;">Error loading withdrawals.</td></tr>';
+    }
+}
+
+// Withdrawal Approve karne ke liye
+async function approveWithdraw(id) {
+    if(!confirm("Paisa bhej diya hai? Approve karein?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/withdrawals/approve`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ withdrawId: id })
+        });
+        if(res.ok) { alert("Approved!"); loadPendingWithdrawals(); updateStats(); }
+    } catch (e) { alert("Action failed"); }
+}
+
         
 
         async function loadAllUsers() {

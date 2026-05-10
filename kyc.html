@@ -70,7 +70,7 @@
             transition: 0.3s;
         }
 
-        .btn-submit:active { transform: scale(0.98); }
+        .btn-submit:disabled { background: #475569; cursor: not-allowed; }
 
         .info-box {
             background: rgba(255, 215, 0, 0.1);
@@ -79,15 +79,13 @@
             margin-top: 20px;
             font-size: 11px;
             color: #ffd700;
-            display: flex;
-            gap: 10px;
             border: 1px solid rgba(255, 215, 0, 0.2);
         }
     </style>
 </head>
 <body>
 
-    <div class="back-btn" onclick="history.back()">
+    <div class="back-btn" onclick="location.href='dashboard.html'">
         <i class="fas fa-arrow-left"></i> Dashboard wapis jayein
     </div>
 
@@ -95,7 +93,7 @@
         <div class="header-box">
             <i class="fas fa-id-card"></i>
             <h2>Complete Your KYC</h2>
-            <p>Withdrawal ke liye bank details bharna anivarya hai</p>
+            <p>Withdrawal ke liye details bharna anivarya hai</p>
         </div>
 
         <div class="input-group">
@@ -125,52 +123,67 @@
         <button class="btn-submit" onclick="submitKYC()">SUBMIT DETAILS</button>
 
         <div class="info-box">
-            <i class="fas fa-shield-alt" style="font-size: 18px;"></i>
-            <div>+18 saal se uper umar waale log hi registered karein.</div>
-            <div>Galat details bharne par withdrawal reject ho sakta hai.</div>
-
+            <div style="display: flex; gap: 10px;">
+                <i class="fas fa-shield-alt" style="font-size: 18px;"></i>
+                <div>
+                    <div>• Galat details bharna sakht mana hai.</div>
+                    <div>• 18+ saal ke log hi registered karein.</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // Render Backend ka URL sahi se define karein
+        const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
+
         async function submitKYC() {
-    const userId = localStorage.getItem('userId');
-    const bankAcc = document.getElementById('bankAcc').value;
-    const ifsc = document.getElementById('ifsc').value;
-    const upiId = document.getElementById('upiId').value;
-    const whatsapp = document.getElementById('whatsapp').value;
+            const userId = localStorage.getItem('userId');
+            const bankAcc = document.getElementById('bankAcc').value;
+            const ifsc = document.getElementById('ifsc').value;
+            const upiId = document.getElementById('upiId').value;
+            const whatsapp = document.getElementById('whatsapp').value;
 
-    if(!bankAcc || !ifsc || !whatsapp) {
-        return alert("Please fill all mandatory fields!");
-    }
+            // Basic Validation
+            if(!bankAcc || !ifsc || !whatsapp) {
+                return alert("Please fill mandatory fields (Account, IFSC, Whatsapp)!");
+            }
 
-    // Button ko disable karein taaki double click na ho
-    const btn = document.querySelector('.btn-submit');
-    btn.innerText = "Submitting...";
-    btn.disabled = true;
+            const btn = document.querySelector('.btn-submit');
+            btn.innerText = "Submitting...";
+            btn.disabled = true;
 
-    try {
-        const res = await fetch('/api/user/submit-kyc', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ userId, bankAcc, ifsc, upiId, whatsapp })
-        });
+            try {
+                // Fetch request Render Backend par bhejein
+                const res = await fetch(`${API_BASE}/user/submit-kyc`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        userId: parseInt(userId), 
+                        bankAcc, 
+                        ifsc: ifsc.toUpperCase(), 
+                        upiId, 
+                        whatsapp 
+                    })
+                });
 
-        const data = await res.json();
-        if(data.success) {
-            alert("KYC details submitted! Admin will verify soon.");
-            window.location.href = "/dashboard.html"; // Redirect to dashboard
-        } else {
-            alert("Error: " + data.message);
-            btn.innerText = "SUBMIT DETAILS";
-            btn.disabled = false;
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert("KYC details submitted! Admin verify hone par withdraw chalu ho jayega.");
+                    window.location.href = "dashboard.html";
+                } else {
+                    alert("Error: " + (data.error || data.message));
+                    btn.innerText = "SUBMIT DETAILS";
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error("KYC Error:", err);
+                alert("Server error, try again later.");
+                btn.innerText = "SUBMIT DETAILS";
+                btn.disabled = false;
+            }
         }
-    } catch (err) {
-        alert("Server error, try again.");
-        btn.innerText = "SUBMIT DETAILS";
-        btn.disabled = false;
-    }
-}
     </script>
 </body>
 </html>

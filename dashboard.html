@@ -25,7 +25,6 @@
         .stat-box { background: #0f172a; padding: 4px 10px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; align-items: center; min-width: 65px; cursor: pointer; }
         .stat-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; }
         .stat-val { font-size: 13px; font-weight: bold; color: var(--accent); }
-        .add-btn { background: var(--green); color: white; border: none; border-radius: 4px; padding: 0 6px; font-size: 12px; margin-left: 5px; cursor: pointer; }
 
         /* Modal / Popups */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; justify-content: center; align-items: center; }
@@ -36,8 +35,7 @@
         .btn-proceed { background: linear-gradient(to right, var(--green), #15803d); color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; margin-top: 15px; cursor: pointer; }
         
         #successPopup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 4000; flex-direction: column; align-items: center; justify-content: center; color: #0f172a; }
-        .success-circle { width: 100px; height: 100px; background: #5f259f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 50px; margin-bottom: 20px; animation: scaleUp 0.5s ease-out; }
-        @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
+        .success-circle { width: 100px; height: 100px; background: #5f259f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 50px; margin-bottom: 20px; }
 
         /* Content Sections */
         .page-section { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); z-index: 2000; overflow-y: auto; padding: 20px; box-sizing: border-box; }
@@ -53,8 +51,6 @@
         .kyc-status-box { padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 13px; text-align: left; }
         .kyc-approved { background: rgba(34, 197, 94, 0.2); border-left: 5px solid var(--green); color: var(--green); }
         .kyc-pending { background: #334155; border-left: 5px solid var(--accent); }
-        .kyc-rejected { background: rgba(239, 68, 68, 0.2); border-left: 5px solid #ef4444; color: #ef4444; }
-        .tnc-box { font-size: 11px; color: #94a3b8; text-align: left; margin-top: 15px; line-height: 1.5; padding: 10px; border: 1px solid #334155; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -74,7 +70,7 @@
                 <input type="number" id="withAmt" class="withdraw-input" placeholder="Min. ₹100">
             </div>
             <button class="btn-proceed" onclick="proceedWithdraw()">PROCEED WITHDRAWAL</button>
-            <p style="font-size: 10px; color: #ef4444; margin-top: 10px;">*Only winning balance can be withdrawn.</p>
+            <p style="font-size: 10px; color: #ef4444; margin-top: 10px;">*Amount will be deducted from your Winning Wallet.</p>
         </div>
     </div>
 
@@ -121,7 +117,7 @@
     <div id="mainDashboard">
         <div style="margin: 15px; background: linear-gradient(135deg, #ef4444, #b91c1c); border-radius: 10px; padding: 12px; font-size: 12px; display: flex; gap: 10px;">
             <i class="fas fa-bell"></i>
-            <div><b>Alert:</b> Kisi bhi help ke liye WhatsApp karein: +91 9672697402</div>
+            <div><b>Alert:</b> Help Support WhatsApp: +91 9672697402</div>
         </div>
         
         <h3 style="margin-left: 15px; font-size: 16px;">Play & Win</h3>
@@ -152,18 +148,12 @@
     </div>
 
     <div id="gameHistorySection" class="page-section">
-        <div class="section-header">
-            <i class="fas fa-arrow-left" onclick="closeSections()"></i>
-            <h3>Game History</h3>
-        </div>
+        <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Game History</h3></div>
         <div id="gameList"></div>
     </div>
 
     <div id="transSection" class="page-section">
-        <div class="section-header">
-            <i class="fas fa-arrow-left" onclick="closeSections()"></i>
-            <h3>Transactions</h3>
-        </div>
+        <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Transactions</h3></div>
         <div id="transList"></div>
     </div>
 
@@ -186,9 +176,7 @@
             if(id === 'transSection') fetchTransactions();
         }
 
-        function closeSections() {
-            document.querySelectorAll('.page-section').forEach(s => s.style.display = 'none');
-        }
+        function closeSections() { document.querySelectorAll('.page-section').forEach(s => s.style.display = 'none'); }
 
         window.onload = async () => {
             if(!userId || userId === "undefined") { window.location.href = "index.html"; return; }
@@ -198,32 +186,21 @@
         async function fetchProfile() {
             try {
                 const res = await fetch(`${API_BASE}/user/details/${userId}`);
-                if (res.status === 502) {
-                    setTimeout(fetchProfile, 3000);
-                    return;
-                }
-                if (!res.ok) throw new Error("HTTP Error");
-
+                if (!res.ok) throw new Error("Fetch failed");
                 const data = await res.json();
                 
-                // Name Display
-                const name = data.full_name || data.username || "User";
-                document.getElementById('userName').innerText = name;
-                document.getElementById('sideName').innerText = name;
-                
-                // Balances
+                document.getElementById('userName').innerText = data.full_name || data.username || "User";
+                document.getElementById('sideName').innerText = data.full_name || data.username || "User";
                 document.getElementById('cashBal').innerText = data.wallet_balance || 0;
                 document.getElementById('earnBal').innerText = data.earning_balance || 0;
 
                 currentWinningBal = data.earning_balance || 0;
                 kycStatus = data.kyc_status;
 
-                // Profile Section
                 document.getElementById('profUser').innerText = data.username || "N/A";
                 document.getElementById('profMob').innerText = data.mobile_no || "N/A";
                 document.getElementById('profDate').innerText = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
 
-                // KYC Status
                 const kycContainer = document.getElementById('kycStatusContainer');
                 if (kycStatus === 'approved') {
                     kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified!</b></div>`;
@@ -232,14 +209,11 @@
                 } else {
                     kycContainer.innerHTML = `<button class="game-btn" onclick="location.href='kyc.html'">Update KYC / Bank Details</button>`;
                 }
-            } catch (err) {
-                console.error(err);
-                setTimeout(fetchProfile, 5000);
-            }
+            } catch (err) { setTimeout(fetchProfile, 5000); }
         }
 
         function openWithdrawModal() {
-            if(kycStatus !== 'approved') { alert("KYC approve karwana zaroori hai. Kripya My Profile par jaakar KYC update karein!!!"); return; }
+            if(kycStatus !== 'approved') { alert("KYC approve karwana zaroori hai. Profile section mein KYC update karein!"); return; }
             document.getElementById('popWinBal').innerText = currentWinningBal;
             document.getElementById('withdrawModal').style.display = 'flex';
         }
@@ -249,7 +223,7 @@
         async function proceedWithdraw() {
             const amount = parseFloat(document.getElementById('withAmt').value);
             if(!amount || amount < 100) { alert("Min withdrawal ₹100"); return; }
-            if(amount > currentWinningBal) { alert("Incomplete Winning Balance!"); return; }
+            if(amount > currentWinningBal) { alert("Insufficient Winning Balance!"); return; }
 
             try {
                 const res = await fetch(`${API_BASE}/withdraw/request`, {
@@ -263,7 +237,7 @@
                     document.getElementById('successAmt').innerText = amount;
                     document.getElementById('successPopup').style.display = 'flex';
                 } else { alert(data.error || "Error"); }
-            } catch (err) { alert("Server connection failed"); }
+            } catch (err) { alert("Connection failed!"); }
         }
 
         async function fetchGameHistory() {
@@ -272,11 +246,11 @@
                 const data = await res.json();
                 document.getElementById('gameList').innerHTML = data.map(g => `
                     <div class="history-card">
-                        <div class="history-row"><span>Battle ID: #${g.id}</span> <span>${new Date(g.created_at).toLocaleDateString()}</span></div>
+                        <div class="history-row"><span>Battle #${g.id}</span> <span>${new Date(g.created_at).toLocaleDateString()}</span></div>
                         <div class="history-row"><span>Amount: ₹${g.amount}</span> <span class="${g.winner_id == userId ? 'status-win' : 'status-lost'}">${g.winner_id == userId ? 'WON' : 'LOST'}</span></div>
                     </div>
                 `).join('') || '<p>No games played yet.</p>';
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         }
 
         async function fetchTransactions() {
@@ -289,13 +263,10 @@
                         <div class="history-row"><span>₹${parseFloat(t.amount).toFixed(2)}</span> <span>${t.status.toUpperCase()}</span></div>
                     </div>
                 `).join('') || '<p>No transactions found.</p>';
-            } catch (err) { console.error(err); }
+            } catch (err) {}
         }
 
-        function logout() {
-            localStorage.clear();
-            window.location.href = "index.html";
-        }
+        function logout() { localStorage.clear(); window.location.href = "index.html"; }
     </script>
 </body>
 </html>

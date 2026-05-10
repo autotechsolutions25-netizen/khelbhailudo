@@ -269,6 +269,53 @@ async function loadPendingKyc() {
     }
 }
 
+
+        // A. User KYC Approve Karne ka Function
+async function approveUser(userId) {
+    if(!confirm("Kya aap is user ka KYC approve karna chahte hain?")) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/approve-kyc`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("User Approved!");
+            loadPendingKyc(); // List refresh karein
+            updateStats();
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (e) {
+        alert("Server connection failed!");
+    }
+}
+
+// B. User KYC Reject Karne ka Function (Jo missing tha)
+async function rejectUser(userId) {
+    const reason = prompt("Reject karne ka karan batayein (User ko dikhega):");
+    if(!reason) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/reject-kyc`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, reason })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("User KYC Rejected!");
+            loadPendingKyc();
+            updateStats();
+        }
+    } catch (e) {
+        alert("Action failed!");
+    }
+}
+
+        
+
         async function loadAllUsers() {
             const body = document.getElementById('userListBody');
             const res = await fetch(`${API_BASE}/admin/users/list`);

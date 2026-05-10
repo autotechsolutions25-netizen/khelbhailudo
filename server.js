@@ -351,18 +351,30 @@ app.get('/api/battles/status/:id', async (req, res) => {
 });
 
 
-// A. Battle Details Fetch karna
+// A. Battle Details Fetch karna (Improved Version)
 app.get('/api/battles/details/:id', async (req, res) => {
     try {
+        const { id } = req.params;
+        
+        // SQL Query check karein ki data mil raha hai ya nahi
         const result = await pool.query(`
-            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
+            SELECT 
+                b.*, 
+                u1.username as creator_name, 
+                u2.username as joiner_name 
             FROM battles b 
             JOIN users u1 ON b.creator_id = u1.id 
             LEFT JOIN users u2 ON b.joiner_id = u2.id 
-            WHERE b.id = $1`, [req.params.id]);
+            WHERE b.id = $1`, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Battle nahi mili!" });
+        }
+
         res.json(result.rows[0]);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Fetch Battle Error:", err.message);
+        res.status(500).json({ error: "Server error occurred" });
     }
 });
 

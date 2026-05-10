@@ -443,12 +443,33 @@ app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, 
 });
 
 
-app.post('/api/user/submit-kyc', async (req, res) => {
-    const { userId, bankAcc, ifsc, upiId, whatsapp } = req.body;
+// KYC Submission Route
+app.post('/api/user/submit-kyc', upload.fields([
+    { name: 'aadharFront', maxCount: 1 },
+    { name: 'aadharBack', maxCount: 1 }
+]), async (req, res) => {
     try {
-        await pool.query('UPDATE users SET bank_account_no = $1, ifsc_code = $2, upi_id = $3, whatsapp_no = $4, kyc_status = \'pending\' WHERE id = $5', [bankAcc, ifsc, upiId, whatsapp, userId]);
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const { userId, fullName, dob, bankName, accountNo, ifsc } = req.body;
+        
+        // Supabase mein images upload karne ka logic (jaisa humne battles ke liye kiya tha)
+        // Yahan images upload karke unke URL nikalne honge...
+
+        // Database Update
+        await pool.query(`
+            UPDATE users SET 
+                full_name = $1, 
+                kyc_status = 'pending',
+                bank_account_no = $2,
+                ifsc_code = $3
+            WHERE id = $4`, 
+            [fullName, accountNo, ifsc, userId]
+        );
+
+        res.json({ success: true, message: "KYC submitted successfully!" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "KYC upload failed" });
+    }
 });
 
 

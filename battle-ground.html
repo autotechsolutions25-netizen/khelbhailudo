@@ -172,22 +172,20 @@ const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
 
 async function uploadWin() {
     const fileInput = document.getElementById('screenshotFile');
-    const file = fileInput.files[0]; // Pehle file object nikalein
+    const file = fileInput.files[0];
     
-    if(!file) return alert("Pehle screenshot select karein!");
+    if(!file) return alert("Photo select karein!");
 
     const formData = new FormData();
-    formData.append('screenshot', file); // ✅ Yahan direct 'file' object dein
+    formData.append('screenshot', file); // ✅ Pure file object
     formData.append('userId', userId);
     formData.append('battleId', battleId);
     formData.append('status', 'won');
 
-try {
-            // FIX: res ko yahan define kiya
-            const res = await fetch(`${API_BASE}/battles/submit-result`, {
-                method: 'POST',
-                body: formData 
-            });
+    const res = await fetch(`${API_BASE}/battles/submit-result`, {
+        method: 'POST',
+        body: formData // Header set nahi karna hai
+    });
         
         const result = await res.json();
         if(result.success) { 

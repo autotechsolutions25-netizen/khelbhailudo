@@ -2,7 +2,6 @@ const express = require('express');
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -58,11 +57,12 @@ const initDB = async () => {
 initDB();
 
 // File Upload Configuration
-const storage = multer.diskStorage({
-    destination: './uploads/',
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+// --- MULTER STORAGE SETUP (Sirf ek baar rakhein) ---
+const storage = multer.memoryStorage(); 
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit safety ke liye
 });
-const upload = multer({ storage });
 
 // ROUTES
 

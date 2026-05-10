@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -396,8 +397,9 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 // Naya submit-result route
 // C. Screenshot Upload Setup (Multer use karein)
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
+    // Check 1: Kya file backend tak aayi?
     if (!req.file) {
-        // Agar yahan 'screenshot' key match nahi hui, toh req.file null hoga
+        console.log("Multer Error: No file in request. Body:", req.body);
         return res.status(400).json({ success: false, error: "File nahi mili!" });
     }
 

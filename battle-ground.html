@@ -177,22 +177,23 @@ async function uploadWin() {
     if(!file) return alert("Photo select karein!");
 
     const formData = new FormData();
-    formData.append('screenshot', file); // ✅ Pure file object
+    formData.append('screenshot', file);
     formData.append('userId', userId);
     formData.append('battleId', battleId);
     formData.append('status', 'won');
 
-    const res = await fetch(`${API_BASE}/battles/submit-result`, {
-        method: 'POST',
-        body: formData // Header set nahi karna hai
-    });
+    try { // ✅ Ye 'try' missing tha
+        const res = await fetch(`${API_BASE}/battles/submit-result`, {
+            method: 'POST',
+            body: formData
+        });
         
         const result = await res.json();
         if(result.success) { 
             alert("Result successfully sent!"); 
             window.location.href = "dashboard.html"; 
         } else {
-            alert("Error: " + result.error);
+            alert("Error: " + (result.error || "Upload failed"));
         }
     } catch (err) {
         console.error("Upload failed:", err);
@@ -200,15 +201,30 @@ async function uploadWin() {
     }
 }
 
-        async function submitDirectResult(status) {
-            if(!confirm("Kya aap sure hain?")) return;
-            const formData = new FormData();
-            formData.append('userId', userId);
-            formData.append('battleId', battleId);
-            formData.append('status', status);
+async function submitDirectResult(status) {
+    if(!confirm("Kya aap sure hain?")) return;
+    
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('battleId', battleId);
+    formData.append('status', status);
 
-            const res = await fetch(`${BACKEND_URL}/api/battles/submit-result`, { method: 'POST', body: formData });
-            const result = await res.json();
+    try {
+        const res = await fetch(`${API_BASE}/battles/submit-result`, { 
+            method: 'POST', 
+            body: formData 
+        });
+        const result = await res.json();
+        if(result.success) {
+            window.location.href = "dashboard.html";
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (err) {
+        console.error("Error:", err);
+        alert("Action failed!");
+    }
+}
             window.location.href = "dashboard.html";
         }
     </script>

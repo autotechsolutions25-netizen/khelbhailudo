@@ -61,7 +61,6 @@
 
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
-    <!-- Withdrawal Modal -->
     <div id="withdrawModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeWithdrawModal()">&times;</span>
@@ -75,11 +74,10 @@
                 <input type="number" id="withAmt" class="withdraw-input" placeholder="Min. ₹100">
             </div>
             <button class="btn-proceed" onclick="proceedWithdraw()">PROCEED WITHDRAWAL</button>
-            <p style="font-size: 10px; color: #ef4444; margin-top: 10px;">*5% Admin commission will be deducted.</p>
+            <p style="font-size: 10px; color: #ef4444; margin-top: 10px;">*Only winning balance can be withdrawn.</p>
         </div>
     </div>
 
-    <!-- Success Popup -->
     <div id="successPopup">
         <div class="success-circle"><i class="fas fa-check"></i></div>
         <h2 style="margin:0;">₹<span id="successAmt">0</span></h2>
@@ -87,7 +85,6 @@
         <button onclick="location.reload()" style="margin-top:30px; background:#5f259f; color:white; border:none; padding:12px 40px; border-radius:25px; font-weight:bold;">DONE</button>
     </div>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div style="width: 60px; height: 60px; background: white; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: var(--dark);">
@@ -101,7 +98,6 @@
         <div class="menu-item" style="color: #ef4444;" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
     </div>
 
-    <!-- Navbar -->
     <div class="navbar">
         <div class="nav-left">
             <i class="fas fa-bars menu-icon" onclick="toggleMenu()"></i>
@@ -111,12 +107,12 @@
             </div>
         </div>
         <div class="wallet-stats">
-            <div class="stat-box">
-                <span class="stat-label">Wallet</span>
-                <span class="stat-val">₹<span id="cashBal">0</span><button class="add-btn" onclick="location.href='add-cash.html'">+</button></span>
+            <div class="stat-box" onclick="location.href='add-cash.html'">
+                <span class="stat-label">Deposit</span>
+                <span class="stat-val">₹<span id="cashBal">0</span></span>
             </div>
             <div class="stat-box" style="border-color: var(--green);" onclick="openWithdrawModal()">
-                <span class="stat-label">Win</span>
+                <span class="stat-label">Winning</span>
                 <span class="stat-val" style="color: var(--green);">₹<span id="earnBal">0</span></span>
             </div>
         </div>
@@ -141,7 +137,6 @@
         </div>
     </div>
 
-    <!-- Sections -->
     <div id="profileSection" class="page-section">
         <div class="section-header">
             <i class="fas fa-arrow-left" onclick="closeSections()"></i>
@@ -153,11 +148,6 @@
             <p><b>Joined On:</b> <span id="profDate">--</span></p>
             <hr style="border-color: #334155;">
             <div id="kycStatusContainer"></div>
-            <div class="tnc-box">
-                <b>Term & Conditions:</b><br>
-                1. Assam, Odisha, Telangana, Nagaland aur Sikkim ke users allowed nahi hain.<br>
-                2. Ek KYC se sirf ek account link ho sakta hai.
-            </div>
         </div>
     </div>
 
@@ -186,7 +176,7 @@
         function toggleMenu() {
             document.getElementById('sidebar').classList.toggle('active');
             const overlay = document.getElementById('overlay');
-            overlay.style.display = overlay.style.display === 'block' ? 'none' : 'block';
+            overlay.style.display = (overlay.style.display === 'block') ? 'none' : 'block';
         }
 
         function openSection(id) {
@@ -205,64 +195,61 @@
             fetchProfile();
         };
 
-async function fetchProfile() {
-    try {
-        console.log("Fetching profile for User ID:", userId);
-        const res = await fetch(`${API_BASE}/user/details/${userId}`);
+        async function fetchProfile() {
+            try {
+                const res = await fetch(`${API_BASE}/user/details/${userId}`);
+                if (res.status === 502) {
+                    setTimeout(fetchProfile, 3000);
+                    return;
+                }
+                if (!res.ok) throw new Error("HTTP Error");
 
-        // 1. Agar Bad Gateway (502) aaye toh 3 second baad fir koshish karein
-        if (res.status === 502) {
-            console.warn("Server starting up (502)... retrying in 3s");
-            setTimeout(fetchProfile, 3000);
-            return;
-        }
+                const data = await res.json();
+                
+                // Name Display
+                const name = data.full_name || data.username || "User";
+                document.getElementById('userName').innerText = name;
+                document.getElementById('sideName').innerText = name;
+                
+                // Balances
+                document.getElementById('cashBal').innerText = data.wallet_balance || 0;
+                document.getElementById('earnBal').innerText = data.earning_balance || 0;
 
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                currentWinningBal = data.earning_balance || 0;
+                kycStatus = data.kyc_status;
 
-        const data = await res.json();
-        if (!data) return;
+                // Profile Section
+                document.getElementById('profUser').innerText = data.username || "N/A";
+                document.getElementById('profMob').innerText = data.mobile_no || "N/A";
+                document.getElementById('profDate').innerText = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
 
-        // 2. Data Update Logic with Null Safety
-        const name = data.full_name || data.username || "User";
-        if(document.getElementById('userName')) document.getElementById('userName').innerText = name;
-        if(document.getElementById('sideName')) document.getElementById('sideName').innerText = name;
-        
-        if(document.getElementById('cashBal')) document.getElementById('cashBal').innerText = data.wallet_balance ?? 0;
-        if(document.getElementById('earnBal')) document.getElementById('earnBal').innerText = data.earning_balance ?? 0;
-
-        currentWinningBal = data.earning_balance ?? 0;
-        kycStatus = data.kyc_status;
-
-        if(document.getElementById('profUser')) document.getElementById('profUser').innerText = data.username || "N/A";
-        if(document.getElementById('profMob')) document.getElementById('profMob').innerText = data.mobile_no || "N/A";
-        
-        const dateStr = data.created_at ? new Date(data.created_at).toLocaleDateString() : "--";
-        if(document.getElementById('profDate')) document.getElementById('profDate').innerText = dateStr;
-
-        const kycContainer = document.getElementById('kycStatusContainer');
-        if (kycContainer) {
-            if (kycStatus === 'approved') {
-                kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified!</b></div>`;
-            } else if (kycStatus === 'pending') {
-                kycContainer.innerHTML = `<div class="kyc-status-box kyc-pending"><i class="fas fa-clock"></i> <b>KYC Under Review</b></div>`;
-            } else {
-                kycContainer.innerHTML = `<button class="game-btn" onclick="location.href='kyc.html'">Update KYC / Bank Details</button>`;
+                // KYC Status
+                const kycContainer = document.getElementById('kycStatusContainer');
+                if (kycStatus === 'approved') {
+                    kycContainer.innerHTML = `<div class="kyc-status-box kyc-approved"><i class="fas fa-check-circle"></i> <b>KYC Verified!</b></div>`;
+                } else if (kycStatus === 'pending') {
+                    kycContainer.innerHTML = `<div class="kyc-status-box kyc-pending"><i class="fas fa-clock"></i> <b>KYC Under Review</b></div>`;
+                } else {
+                    kycContainer.innerHTML = `<button class="game-btn" onclick="location.href='kyc.html'">Update KYC / Bank Details</button>`;
+                }
+            } catch (err) {
+                console.error(err);
+                setTimeout(fetchProfile, 5000);
             }
         }
-    } catch (err) {
-        console.error("Profile Fetch Error:", err);
-        // Agar connection fail ho jaye toh 5 second baad retry
-        setTimeout(fetchProfile, 5000);
-    }
-}
 
+        function openWithdrawModal() {
+            if(kycStatus !== 'approved') { alert("KYC approve karwana zaroori hai."); return; }
+            document.getElementById('popWinBal').innerText = currentWinningBal;
+            document.getElementById('withdrawModal').style.display = 'flex';
+        }
 
-        
+        function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
+
         async function proceedWithdraw() {
-            const amountInput = document.getElementById('withAmt').value;
-            const amount = parseFloat(amountInput);
-
+            const amount = parseFloat(document.getElementById('withAmt').value);
             if(!amount || amount < 100) { alert("Min withdrawal ₹100"); return; }
+            if(amount > currentWinningBal) { alert("Incomplete Winning Balance!"); return; }
 
             try {
                 const res = await fetch(`${API_BASE}/withdraw/request`, {
@@ -283,8 +270,7 @@ async function fetchProfile() {
             try {
                 const res = await fetch(`${API_BASE}/user/game-history/${userId}`);
                 const data = await res.json();
-                const container = document.getElementById('gameList');
-                container.innerHTML = data.map(g => `
+                document.getElementById('gameList').innerHTML = data.map(g => `
                     <div class="history-card">
                         <div class="history-row"><span>Battle ID: #${g.id}</span> <span>${new Date(g.created_at).toLocaleDateString()}</span></div>
                         <div class="history-row"><span>Amount: ₹${g.amount}</span> <span class="${g.winner_id == userId ? 'status-win' : 'status-lost'}">${g.winner_id == userId ? 'WON' : 'LOST'}</span></div>
@@ -294,29 +280,17 @@ async function fetchProfile() {
         }
 
         async function fetchTransactions() {
-            const container = document.getElementById('transList');
             try {
                 const res = await fetch(`${API_BASE}/user/transactions/${userId}`);
                 const data = await res.json();
-                container.innerHTML = data.map(t => `
+                document.getElementById('transList').innerHTML = data.map(t => `
                     <div class="history-card" style="border-left-color: ${t.type === 'deposit' ? 'var(--green)' : 'var(--primary)'}">
-                        <div class="history-row">
-                            <span style="font-weight:bold;">${t.type === 'deposit' ? 'CASH ADDED' : 'WITHDRAWAL'}</span>
-                            <span style="font-size:10px;">${new Date(t.created_at).toLocaleDateString()}</span>
-                        </div>
+                        <div class="history-row"><b>${t.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAWAL'}</b> <span>${new Date(t.created_at).toLocaleDateString()}</span></div>
                         <div class="history-row"><span>₹${parseFloat(t.amount).toFixed(2)}</span> <span>${t.status.toUpperCase()}</span></div>
                     </div>
                 `).join('') || '<p>No transactions found.</p>';
             } catch (err) { console.error(err); }
         }
-
-        function openWithdrawModal() {
-            if(kycStatus !== 'approved') { alert("KYC approve karwana zaroori hai."); return; }
-            document.getElementById('popWinBal').innerText = currentWinningBal;
-            document.getElementById('withdrawModal').style.display = 'flex';
-        }
-
-        function closeWithdrawModal() { document.getElementById('withdrawModal').style.display = 'none'; }
 
         function logout() {
             localStorage.clear();

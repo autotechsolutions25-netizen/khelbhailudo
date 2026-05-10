@@ -21,9 +21,9 @@ const cors = require('cors'); // 1. CORS library ko import karein
 
 // 2. Isse allow karein (Ise app = express() ke turant baad likhna)
 app.use(cors({
-    origin: 'https://autotechsolutions25-netizen.github.io', // Sirf aapki website allow hogi
+    origin: 'https://autotechsolutions25-netizen.github.io', // Sirf aapki site allow hogi
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type']
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // --- DATABASE TABLES INITIALIZATION ---

@@ -224,20 +224,42 @@ async function loadPendingKyc() {
     try {
         const res = await fetch(`${API_BASE}/admin/pending-users`);
         const users = await res.json();
-        body.innerHTML = users.map(u => {
-            // Agar URL 'http' se shuru ho raha hai toh wo Supabase ka hai, warna Render ka local path
-            const fImg = u.aadhar_front_url && u.aadhar_front_url.startsWith('http') ? u.aadhar_front_url : (u.aadhar_front_url ? BASE_URL + u.aadhar_front_url : "");
-            const bImg = u.aadhar_back_url && u.aadhar_back_url.startsWith('http') ? u.aadhar_back_url : (u.aadhar_back_url ? BASE_URL + u.aadhar_back_url : "");
+        
+        body.innerHTML = users.length ? users.map(u => {
+            // Image URL logic (Supabase handle karne ke liye)
+            const fImg = u.aadhar_front_url || "";
+            const bImg = u.aadhar_back_url || "";
             
             return `
             <tr>
-                <td><b>${u.full_name}</b><br><small>${u.mobile_no}</small></td>
-                <td>${fImg ? `<img src="${fImg}" class="ss-img" onclick="window.open(this.src)">` : "N/A"}</td>
-                <td>${bImg ? `<img src="${bImg}" class="ss-img" onclick="window.open(this.src)">` : "N/A"}</td>
-                <td><button class="btn btn-success" onclick="approveUser(${u.id})">Approve</button></td>
+                <td style="text-align:left; font-size:12px;">
+                    <b>Name:</b> ${u.full_name || u.username}<br>
+                    <b>Mob:</b> ${u.mobile_no}<br>
+                    <b>WA:</b> ${u.whatsapp_no || 'N/A'}
+                </td>
+                <td style="font-size:11px; text-align:left; background: rgba(0,0,0,0.02);">
+                    <b>Acc:</b> ${u.bank_account_no || 'N/A'}<br>
+                    <b>IFSC:</b> ${u.ifsc_code || 'N/A'}<br>
+                    <b>UPI:</b> ${u.upi_id || 'N/A'}
+                </td>
+                <td>
+                    ${fImg ? `<img src="${fImg}" class="ss-img" style="width:50px; height:70px; border:1px solid #ccc; margin-right:5px;" onclick="window.open(this.src)" title="Front Side">` : "No Front"}
+                    ${bImg ? `<img src="${bImg}" class="ss-img" style="width:50px; height:70px; border:1px solid #ccc;" onclick="window.open(this.src)" title="Back Side">` : "No Back"}
+                </td>
+                <td>
+                    <button class="btn btn-success" style="padding:5px 10px; font-size:11px;" onclick="approveUser(${u.id})">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button class="btn btn-danger" style="padding:5px 10px; font-size:11px; margin-top:5px;" onclick="rejectUser(${u.id})">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                </td>
             </tr>`;
-        }).join('');
-    } catch (e) { console.log("KYC error"); }
+        }).join('') : '<tr><td colspan="4" align="center">No pending KYC found.</td></tr>';
+    } catch (e) { 
+        console.error("KYC error:", e); 
+        body.innerHTML = '<tr><td colspan="4" align="center" style="color:red;">Error loading KYC data</td></tr>';
+    }
 }
 
         async function loadAllUsers() {

@@ -585,16 +585,45 @@ app.get('/api/admin/master-stats', async (req, res) => {
 
 app.post('/api/admin/battles/verify-winner', async (req, res) => {
     const { battleId, winnerId } = req.body;
+    const client = await pool.connect();
+
     try {
-        await pool.query('BEGIN');
-        const battleRes = await pool.query('SELECT amount FROM battles WHERE id = $1', [battleId]);
-        const amount = parseFloat(battleRes.rows[0].amount);
-        const prize = amount * 1.90;
-        await pool.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2', [prize, winnerId]);
-        await pool.query("UPDATE battles SET status = 'completed', winner_id = $1 WHERE id = $2", [winnerId, battleId]);
-        await pool.query('COMMIT');
-        res.json({ success: true });
-    } catch (err) { await pool.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
+        await client.query('BEGIN');
+
+        // 1. Battle details aur amount nikalna
+        const battleRes = await client.query('SELECT amount, status FROM battles WHERE id = $1', [battleId]);
+        const battle = battleRes.rows[0];
+
+        if (!battle || battle.status === 'completed') {
+            throw new Error("Battle pehle hi complete ho chuki hai!");
+        }
+
+        // 2. Winning Amount Calculate karna (Platform fee kaat kar, eg: 10%)
+        // Agar aapne koi fee nahi rakhi toh direct battle.amount use karein
+        const winAmount = parseFloat(battle.amount) * 1.8; // Example: ₹100 ki battle par ₹180 milenge
+
+        // 3. Winner ke EARNING_BALANCE mein paisa add karna (Wallet mein nahi)
+        await client.query(
+            'UPDATE users SET earning_balance = earning_balance + $1 WHERE id = $2',
+            [winAmount, winnerId]
+        );
+
+        // 4. Battle status update karna
+        await client.query(
+            'UPDATE battles SET status = $1, winner_id = $2 WHERE id = $3',
+            ['completed', winnerId, battleId]
+        );
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: "Winner Approved! Paisa Earning Balance mein bhej diya gaya hai." });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Verification Error:", err.message);
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
 });
 
 app.get('/api/admin/pending-users', async (req, res) => {

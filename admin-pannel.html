@@ -315,35 +315,43 @@ async function rejectUser(userId) {
 }
 
 
-        async function loadPendingWithdrawals() {
+async function loadPendingWithdrawals() {
     const body = document.getElementById('withdrawBody');
+    body.innerHTML = '<tr><td colspan="4">Loading...</td></tr>'; // Loading state
+    
     try {
         const res = await fetch(`${API_BASE}/admin/withdrawals/pending`);
         const data = await res.json();
         
-        body.innerHTML = data.length ? data.map(w => `
+        if(!data || data.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" align="center">No pending withdrawals found in Transactions.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = data.map(w => `
             <tr>
                 <td style="text-align:left;">
                     <b>${w.username}</b><br>
-                    <small>${w.mobile_no}</small><br>
-                    <span style="font-size:10px; color:blue;">UPI: ${w.upi_id || 'N/A'}</span>
+                    <small>${w.mobile_no}</small>
+                </td>
+                <td style="text-align:left; font-size:11px;">
+                    UPI: ${w.upi_id || 'N/A'}<br>
+                    Bank: ${w.bank_account_no || 'N/A'}
                 </td>
                 <td>₹${w.amount}</td>
-                <td style="color:var(--admin-red); font-weight:bold;">
-                    ₹${(w.amount * 0.95).toFixed(2)} 
-                    <br><small style="font-size:9px; color:#666;">(After 5% Fee)</small>
-                </td>
                 <td>
                     <button class="btn btn-success" onclick="approveWithdraw(${w.id})">Approve</button>
                     <button class="btn btn-danger" onclick="rejectWithdraw(${w.id})">Reject</button>
                 </td>
             </tr>
-        `).join('') : '<tr><td colspan="4" align="center">No pending withdrawals.</td></tr>';
+        `).join('');
     } catch (e) {
-        console.error("Withdrawal Load Error:", e);
-        body.innerHTML = '<tr><td colspan="4" align="center" style="color:red;">Error loading withdrawals.</td></tr>';
+        console.error("Frontend Withdraw Error:", e);
+        body.innerHTML = '<tr><td colspan="4" align="center" style="color:red;">API Connection Error</td></tr>';
     }
 }
+
+        
 
 // Withdrawal Approve karne ke liye
 async function approveWithdraw(id) {

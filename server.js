@@ -798,6 +798,35 @@ app.post('/api/admin/withdrawals/approve', async (req, res) => {
 });
 
 
+app.post('/api/admin/withdrawals/reject', async (req, res) => {
+    const { withdrawId, reason } = req.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Transaction details nikalna
+        const transRes = await client.query("SELECT user_id, amount FROM transactions WHERE id = $1 AND status = 'pending'", [withdrawId]);
+        if (transRes.rows.length === 0) throw new Error("Transaction nahi mili");
+        
+        const { user_id, amount } = transRes.rows[0];
+
+        // 2. User ke earning_balance mein paisa wapis dalna
+        await client.query("UPDATE users SET earning_balance = earning_balance + $1 WHERE id = $2", [amount, user_id]);
+
+        // 3. Transaction status update karna
+        await client.query("UPDATE transactions SET status = 'rejected' WHERE id = $1", [withdrawId]);
+
+        await client.query('COMMIT');
+        res.json({ success: true });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

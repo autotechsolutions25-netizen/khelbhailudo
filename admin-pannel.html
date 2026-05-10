@@ -163,35 +163,38 @@ async function loadBattles() {
     try {
         const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
         const data = await res.json();
+        
         body.innerHTML = data.length ? data.map(b => {
-            // Supabase URL pehle se hi complete hota hai, BASE_URL jodne ki zarurat nahi
-// Is hisse ko replace karein
-const fullImg = b.screenshot_url ? b.screenshot_url.trim() : null;
+            const fullImg = b.screenshot_url ? b.screenshot_url.trim() : null;
 
-return `
-<tr>
-    <td>#${b.id}</td>
-    <td>${b.creator_name} vs ${b.joiner_name}</td>
-    <td>₹${b.amount}</td>
-    <td>
-        ${fullImg ? `
-            <div style="text-align:center;">
-                <a href="${fullImg}" target="_blank">
-                    <img src="${fullImg}" class="ss-img" style="border:1px solid #ccc; width:60px; height:80px;" 
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <span style="display:none; color:blue; font-size:10px;">Click to View</span>
-                </a>
-            </div>
-        ` : `<span style="color:red; font-size:10px;">No Proof</span>`}
-    </td>
-    <td style="color:blue; font-weight:bold;">${b.result_status || 'N/A'}</td>
-    <td>
-        <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
-        <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
-    </td>
-</tr>`;
+            return `
+            <tr>
+                <td>#${b.id}</td>
+                <td>${b.creator_name} vs ${b.joiner_name}</td>
+                <td>₹${b.amount}</td>
+                <td>
+                    ${fullImg ? `
+                        <div style="text-align:center;">
+                            <a href="${fullImg}" target="_blank" style="text-decoration:none;">
+                                <img src="${fullImg}" class="ss-img" 
+                                     style="border:1px solid #ccc; width:60px; height:80px; display:block; margin:auto;" 
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <div style="display:none; color:blue; font-size:11px; font-weight:bold;">🖼️ View Proof</div>
+                            </a>
+                        </div>
+                    ` : `<span style="color:red; font-size:10px;">No Proof</span>`}
+                </td>
+                <td style="color:blue; font-weight:bold; text-transform:uppercase;">${b.result_status || 'N/A'}</td>
+                <td>
+                    <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
+                    <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
+                </td>
+            </tr>`;
         }).join('') : '<tr><td colspan="6" align="center">No pending results.</td></tr>';
-    } catch (e) { console.error("Battles Load Error:", e); }
+    } catch (e) { 
+        console.error("Battles Load Error:", e);
+        body.innerHTML = '<tr><td colspan="6" align="center" style="color:red;">Error loading battles.</td></tr>';
+    }
 }
 
         

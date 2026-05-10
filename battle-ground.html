@@ -184,39 +184,44 @@
 
 async function uploadWin() {
     const fileInput = document.getElementById('screenshotFile');
-    const file = fileInput.files[0]; // File check karein
+    const file = fileInput.files[0];
     
-    if(!file) {
-        return alert("Pehle screenshot select karein!");
-    }
+    // Check 1: File select hui ya nahi
+    if(!file) return alert("Pehle screenshot select karein!");
+
+    // Check 2: Variables check karein (Console mein dikhega)
+    console.log("Uploading for Battle:", battleId);
+    console.log("User ID:", userId);
+    console.log("File Name:", file.name);
 
     const formData = new FormData();
-    // CRITICAL: Key ka naam 'screenshot' hi hona chahiye
-    formData.append('screenshot', file); 
+    formData.append('screenshot', file); // 'screenshot' key backend se match honi chahiye
     formData.append('userId', userId);
     formData.append('battleId', battleId);
     formData.append('status', 'won');
 
     try {
-        const res = await fetch(`${API_BASE}/battles/submit-result`, {
+        // Direct URL use karke dekhte hain mismatch hatane ke liye
+        const res = await fetch("https://khel-bhai-luso-backend-service.onrender.com/api/battles/submit-result", {
             method: 'POST',
-            body: formData // Note: Header mein Content-Type mat dena
+            body: formData
+            // Note: Yahan 'Content-Type' header BILKUL nahi hona chahiye
         });
         
         const result = await res.json();
-        if(result.success) { 
+        
+        if(res.ok && result.success) { 
             alert("Result successfully sent!"); 
             window.location.href = "dashboard.html"; 
         } else {
-            // Agar backend se "File nahi mili!" aa raha hai, toh yahan alert dikhega
-            alert("Error: " + result.error);
+            console.error("Backend Error:", result);
+            alert("Server Error: " + (result.error || "Upload failed"));
         }
     } catch (err) {
-        console.error("Upload failed:", err);
-        alert("Internet Connection check karein!!!.");
+        console.error("Fetch Crash:", err);
+        alert("Network Error: Request backend tak nahi pahunchi.");
     }
 }
-
         async function submitDirectResult(status) {
             if(!confirm("Kya aap sure hain?")) return;
             

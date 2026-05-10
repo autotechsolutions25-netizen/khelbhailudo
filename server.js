@@ -780,10 +780,20 @@ app.get('/api/admin/withdrawals/pending', async (req, res) => {
 app.post('/api/admin/withdrawals/approve', async (req, res) => {
     const { withdrawId } = req.body;
     try {
-        await pool.query("UPDATE transactions SET status = 'success' WHERE id = $1", [withdrawId]);
-        res.json({ success: true });
+        // 1. Transaction status update
+        const result = await pool.query(
+            "UPDATE transactions SET status = 'success' WHERE id = $1 RETURNING *", 
+            [withdrawId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "Transaction nahi mili" });
+        }
+
+        res.json({ success: true, message: "Withdrawal Approved successfully!" });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Approve Error:", err.message);
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 

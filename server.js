@@ -690,6 +690,30 @@ app.get('/api/admin/users/list', async (req, res) => {
 });
 
 
+// 1. KYC Approve Route
+app.post('/api/admin/approve-kyc', async (req, res) => {
+    const { userId } = req.body;
+    try {
+        await pool.query("UPDATE users SET kyc_status = 'approved' WHERE id = $1", [userId]);
+        res.json({ success: true, message: "User approved" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. KYC Reject Route
+app.post('/api/admin/reject-kyc', async (req, res) => {
+    const { userId, reason } = req.body;
+    try {
+        // KYC status ko 'rejected' set karein
+        await pool.query("UPDATE users SET kyc_status = 'rejected' WHERE id = $1", [userId]);
+        res.json({ success: true, message: "User rejected" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

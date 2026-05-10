@@ -609,16 +609,17 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
     }
 });
 
+
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
         const users = await pool.query('SELECT COUNT(*) FROM users');
         const kyc = await pool.query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
         
-        // FIX: Withdrawals count 'transactions' table se nikalein jahan type 'withdrawal' ho
+        // FIX: Ab hum 'transactions' table se withdrawal count nikalenge
         const withdraw = await pool.query("SELECT COUNT(*) FROM transactions WHERE type = 'withdrawal' AND status = 'pending'");
         
         const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval'");
-        
+
         res.json({
             totalUsers: parseInt(users.rows[0].count),
             pendingKyc: parseInt(kyc.rows[0].count),
@@ -630,7 +631,6 @@ app.get('/api/admin/master-stats', async (req, res) => {
         res.status(500).json({ error: err.message }); 
     }
 });
-
 
 app.post('/api/admin/battles/verify-winner', async (req, res) => {
     const { battleId, winnerId } = req.body;
@@ -725,9 +725,18 @@ app.post('/api/admin/reject-kyc', async (req, res) => {
 // 1. Pending Withdrawals Fetch karna
 app.get('/api/admin/withdrawals/pending', async (req, res) => {
     try {
-        // Transactions table se pending withdrawals nikalna
+        // Hum transactions aur users table ko join kar rahe hain taaki bank/UPI details mil sakein
         const result = await pool.query(`
-            SELECT t.*, u.username, u.mobile_no, u.upi_id 
+            SELECT 
+                t.id, 
+                t.amount, 
+                t.status, 
+                t.created_at, 
+                u.username, 
+                u.mobile_no, 
+                u.upi_id,
+                u.bank_account_no,
+                u.ifsc_code
             FROM transactions t
             JOIN users u ON t.user_id = u.id 
             WHERE t.type = 'withdrawal' AND t.status = 'pending'
@@ -735,10 +744,10 @@ app.get('/api/admin/withdrawals/pending', async (req, res) => {
             
         res.json(result.rows);
     } catch (err) {
+        console.error("Fetch Withdrawals Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
-
 
 // 2. Withdrawal Approve karna
 app.post('/api/admin/withdrawals/approve', async (req, res) => {

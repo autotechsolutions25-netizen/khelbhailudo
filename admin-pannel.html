@@ -100,28 +100,28 @@
             </div>
         </div>
 
-<div id="section-kyc" class="content-card" style="display:none;">
-    <h3>Pending KYC Approvals</h3>
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>User & WA</th>
-                    <th>Bank Details</th>
-                    <th>Aadhar (F/B)</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="pendingKycBody"></tbody>
-        </table>
-    </div>
-</div>
+        <div id="section-kyc" class="content-card" style="display:none;">
+            <h3>Pending KYC Approvals</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User & WA</th>
+                            <th>Bank Details</th>
+                            <th>Aadhar (F/B)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingKycBody"></tbody>
+                </table>
+            </div>
+        </div>
 
         <div id="section-withdrawals" class="content-card" style="display:none;">
             <h3>Withdrawals</h3>
             <div class="table-responsive">
                 <table>
-                    <thead><tr><th>User</th><th>Amount</th><th>Final</th><th>Action</th></tr></thead>
+                    <thead><tr><th>User</th><th>Details</th><th>Amount</th><th>Action</th></tr></thead>
                     <tbody id="withdrawBody"></tbody>
                 </table>
             </div>
@@ -138,136 +138,223 @@
         </div>
     </div>
 
-<script>
-    const BASE_URL = "https://khel-bhai-luso-backend-service.onrender.com";
-    const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
+    <script>
+        const BASE_URL = "https://khel-bhai-luso-backend-service.onrender.com";
+        const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
 
-    // Global toggle helper
-    function toggleSidebar() {
-        document.getElementById('adminSidebar').classList.toggle('active');
-        document.getElementById('overlay').classList.toggle('active');
-    }
-
-    // Updated showSection with better refresh logic
-    function showSection(id) {
-        const sections = ['stats', 'users', 'withdrawals', 'kyc', 'battles'];
-        sections.forEach(s => {
-            const el = document.getElementById('section-' + s);
-            if(el) el.style.display = 'none';
-        });
-        
-        const targetSection = document.getElementById('section-' + id);
-        if(targetSection) targetSection.style.display = 'block';
-
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        const nav = document.getElementById('nav-' + id);
-        if(nav) nav.classList.add('active');
-
-        // Section data loader
-        if(id === 'kyc') loadPendingKyc();
-        if(id === 'users') loadAllUsers();
-        if(id === 'withdrawals') loadPendingWithdrawals();
-        if(id === 'battles') loadBattles();
-        if(id === 'stats') updateStats();
-    }
-
-    // CORS aur 502 Error handle karne ke liye updateStats
-    async function updateStats() {
-        try {
-            const res = await fetch(`${API_BASE}/admin/master-stats`);
-            if(!res.ok) throw new Error("Server error " + res.status);
-            const data = await res.json();
-            
-            document.getElementById('statTotalUsers').innerText = data.totalUsers || 0;
-            document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
-            document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
-            document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
-        } catch (e) {
-            console.log("Stats fetch failed:", e.message);
-            // Retry logic after 5 seconds if server is waking up
-            setTimeout(updateStats, 5000);
+        function toggleSidebar() {
+            document.getElementById('adminSidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
         }
-    }
 
-    async function loadPendingWithdrawals() {
-        const body = document.getElementById('withdrawBody');
-        body.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
-        
-        try {
-            const res = await fetch(`${API_BASE}/admin/withdrawals/pending`);
-            if(!res.ok) throw new Error("CORS or Server Error");
-            const data = await res.json();
-            
-            if(!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="4" align="center">No pending withdrawals.</td></tr>';
-                return;
-            }
-
-            body.innerHTML = data.map(w => `
-                <tr>
-                    <td style="text-align:left;">
-                        <b>${w.username}</b><br><small>${w.mobile_no}</small>
-                    </td>
-                    <td style="text-align:left; font-size:11px;">
-                        UPI: ${w.upi_id || 'N/A'}<br>Bank: ${w.bank_account_no || 'N/A'}
-                    </td>
-                    <td>₹${w.amount}</td>
-                    <td>
-                        <button class="btn btn-success" onclick="approveWithdraw(${w.id})">Approve</button>
-                        <button class="btn btn-danger" onclick="rejectWithdraw(${w.id})">Reject</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch (e) {
-            console.error("Frontend Withdraw Error:", e);
-            body.innerHTML = '<tr><td colspan="4" align="center" style="color:red;">Failed to load data. Please refresh.</td></tr>';
-        }
-    }
-
-    async function approveWithdraw(id) {
-        if(!confirm("Paisa bhej diya hai? Status update karein?")) return;
-        try {
-            const res = await fetch(`${API_BASE}/admin/withdrawals/approve`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ withdrawId: id })
+        function showSection(id) {
+            const sections = ['stats', 'users', 'withdrawals', 'kyc', 'battles'];
+            sections.forEach(s => {
+                const el = document.getElementById('section-' + s);
+                if(el) el.style.display = 'none';
             });
-            const data = await res.json();
-            if(data.success) { 
-                alert("Withdrawal Approved!"); 
-                loadPendingWithdrawals(); 
-                updateStats(); 
-            } else {
-                alert("Error: " + data.error);
+            document.getElementById('section-' + id).style.display = 'block';
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            const nav = document.getElementById('nav-' + id);
+            if(nav) nav.classList.add('active');
+
+            if(id === 'kyc') loadPendingKyc();
+            if(id === 'users') loadAllUsers();
+            if(id === 'withdrawals') loadPendingWithdrawals();
+            if(id === 'battles') loadBattles();
+            if(id === 'stats') updateStats();
+        }
+
+        async function loadBattles() {
+            const body = document.getElementById('battleListBody');
+            try {
+                const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
+                const data = await res.json();
+                body.innerHTML = data.length ? data.map(b => {
+                    const fullImg = b.screenshot_url ? b.screenshot_url.trim() : null;
+                    return `
+                    <tr>
+                        <td>#${b.id}</td>
+                        <td>${b.creator_name} vs ${b.joiner_name}</td>
+                        <td>₹${b.amount}</td>
+                        <td>
+                            ${fullImg ? `
+                                <div style="text-align:center;">
+                                    <a href="${fullImg}" target="_blank">
+                                        <img src="${fullImg}" class="ss-img" style="border:1px solid #ccc; width:60px; height:80px;" 
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        <span style="display:none; color:blue; font-size:10px;">Click to View</span>
+                                    </a>
+                                </div>
+                            ` : `<span style="color:red; font-size:10px;">No Proof</span>`}
+                        </td>
+                        <td style="color:blue; font-weight:bold;">${b.result_status || 'N/A'}</td>
+                        <td>
+                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
+                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
+                        </td>
+                    </tr>`;
+                }).join('') : '<tr><td colspan="6" align="center">No pending results.</td></tr>';
+            } catch (e) { console.error("Battles Load Error:", e); }
+        }
+
+        async function approveWinner(battleId, winnerId) {
+            if(!confirm("Release payment?")) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/battles/verify-winner`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ battleId, winnerId })
+                });
+                if(res.ok) { alert("Released!"); loadBattles(); updateStats(); }
+            } catch (e) { alert("Server error."); }
+        }
+
+        async function updateStats() {
+            try {
+                const res = await fetch(`${API_BASE}/admin/master-stats`);
+                if(!res.ok) throw new Error("Server Down");
+                const data = await res.json();
+                document.getElementById('statTotalUsers').innerText = data.totalUsers || 0;
+                document.getElementById('statPendingBattles').innerText = data.pendingBattles || 0;
+                document.getElementById('statPendingWithdraw').innerText = data.pendingWithdrawals || 0;
+                document.getElementById('statPendingKyc').innerText = data.pendingKyc || 0;
+            } catch (e) { 
+                console.log("Stats fetch failed, retrying in 5s..."); 
+                setTimeout(updateStats, 5000);
             }
-        } catch (e) { 
-            alert("Approval failed. Please check server logs."); 
         }
-    }
 
-    // Remaining functions same as before...
-    async function loadAllUsers() {
-        const body = document.getElementById('userListBody');
-        try {
-            const res = await fetch(`${API_BASE}/admin/users/list`);
-            const data = await res.json();
-            body.innerHTML = data.map(u => `<tr><td>#${u.id}</td><td>${u.username}</td><td>${u.mobile_no}</td><td>₹${u.wallet_balance}</td><td>${u.is_verified ? 'V':'P'}</td></tr>`).join('');
-        } catch(e) { console.log(e); }
-    }
-
-    function adminLogout() {
-        localStorage.removeItem('admin_logged_in');
-        window.location.href = "index.html";
-    }
-
-    window.onload = () => {
-        if (localStorage.getItem('admin_logged_in') !== 'true') {
-            const p = prompt("Admin Pass:");
-            if(p === "Praveen@123") localStorage.setItem('admin_logged_in', 'true');
-            else window.location.href = "index.html";
+        async function loadPendingKyc() {
+            const body = document.getElementById('pendingKycBody');
+            try {
+                const res = await fetch(`${API_BASE}/admin/pending-users`);
+                const users = await res.json();
+                body.innerHTML = users.length ? users.map(u => {
+                    const fImg = u.aadhar_front_url || "";
+                    const bImg = u.aadhar_back_url || "";
+                    return `
+                    <tr>
+                        <td style="text-align:left; font-size:12px;">
+                            <b>Name:</b> ${u.full_name || u.username}<br>
+                            <b>Mob:</b> ${u.mobile_no}<br>
+                            <b>WA:</b> ${u.whatsapp_no || 'N/A'}
+                        </td>
+                        <td style="font-size:11px; text-align:left; background: rgba(0,0,0,0.02);">
+                            <b>Acc:</b> ${u.bank_account_no || 'N/A'}<br>
+                            <b>IFSC:</b> ${u.ifsc_code || 'N/A'}<br>
+                            <b>UPI:</b> ${u.upi_id || 'N/A'}
+                        </td>
+                        <td>
+                            ${fImg ? `<img src="${fImg}" class="ss-img" style="width:50px; height:70px;" onclick="window.open(this.src)">` : "No Front"}
+                            ${bImg ? `<img src="${bImg}" class="ss-img" style="width:50px; height:70px;" onclick="window.open(this.src)">` : "No Back"}
+                        </td>
+                        <td>
+                            <button class="btn btn-success" onclick="approveUser(${u.id})">Approve</button>
+                            <button class="btn btn-danger" onclick="rejectUser(${u.id})">Reject</button>
+                        </td>
+                    </tr>`;
+                }).join('') : '<tr><td colspan="4" align="center">No pending KYC found.</td></tr>';
+            } catch (e) { body.innerHTML = '<tr><td colspan="4">Error loading KYC</td></tr>'; }
         }
-        updateStats();
-    };
-</script>
+
+        async function approveUser(userId) {
+            if(!confirm("Approve KYC?")) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/approve-kyc`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                if(res.ok) { alert("Approved!"); loadPendingKyc(); updateStats(); }
+            } catch (e) { alert("Connection failed!"); }
+        }
+
+        async function rejectUser(userId) {
+            const reason = prompt("Reject karne ka karan:");
+            if(!reason) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/reject-kyc`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, reason })
+                });
+                if(res.ok) { alert("Rejected!"); loadPendingKyc(); updateStats(); }
+            } catch (e) { alert("Action failed!"); }
+        }
+
+        async function loadPendingWithdrawals() {
+            const body = document.getElementById('withdrawBody');
+            body.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+            try {
+                const res = await fetch(`${API_BASE}/admin/withdrawals/pending`);
+                const data = await res.json();
+                body.innerHTML = data.length ? data.map(w => `
+                    <tr>
+                        <td style="text-align:left;"><b>${w.username}</b><br><small>${w.mobile_no}</small></td>
+                        <td style="text-align:left; font-size:11px;">UPI: ${w.upi_id || 'N/A'}<br>Bank: ${w.bank_account_no || 'N/A'}</td>
+                        <td>₹${w.amount}</td>
+                        <td>
+                            <button class="btn btn-success" onclick="approveWithdraw(${w.id})">Approve</button>
+                            <button class="btn btn-danger" onclick="rejectWithdraw(${w.id})">Reject</button>
+                        </td>
+                    </tr>
+                `).join('') : '<tr><td colspan="4" align="center">No pending withdrawals.</td></tr>';
+            } catch (e) { body.innerHTML = '<tr><td colspan="4">API Connection Error</td></tr>'; }
+        }
+
+        async function approveWithdraw(withdrawId) {
+            if(!confirm("Approve this withdrawal?")) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/withdrawals/approve`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ withdrawId })
+                });
+                if(res.ok) { alert("Approved!"); loadPendingWithdrawals(); updateStats(); }
+            } catch (e) { alert("Action failed"); }
+        }
+
+        // --- NEW: Reject Withdrawal Function ---
+        async function rejectWithdraw(withdrawId) {
+            const reason = prompt("Reject karne ka karan (Paisa user ke wallet mein wapis chala jayega):");
+            if(!reason) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/withdrawals/reject`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ withdrawId, reason })
+                });
+                const result = await res.json();
+                if(result.success) { 
+                    alert("Rejected! Paisa user ko wapis bhej diya gaya hai."); 
+                    loadPendingWithdrawals(); 
+                    updateStats(); 
+                } else {
+                    alert("Error: " + result.error);
+                }
+            } catch (e) { alert("Action failed"); }
+        }
+
+        async function loadAllUsers() {
+            const body = document.getElementById('userListBody');
+            try {
+                const res = await fetch(`${API_BASE}/admin/users/list`);
+                const data = await res.json();
+                body.innerHTML = data.map(u => `<tr><td>#${u.id}</td><td>${u.username}</td><td>${u.mobile_no}</td><td>₹${u.wallet_balance}</td><td>${u.kyc_status}</td></tr>`).join('');
+            } catch(e) {}
+        }
+
+        function adminLogout() { localStorage.removeItem('admin_logged_in'); window.location.href = "index.html"; }
+
+        window.onload = () => {
+            if (localStorage.getItem('admin_logged_in') !== 'true') {
+                const p = prompt("Admin Pass:");
+                if(p === "Praveen@123") localStorage.setItem('admin_logged_in', 'true');
+                else window.location.href = "index.html";
+            }
+            updateStats();
+        };
+    </script>
 </body>
 </html>

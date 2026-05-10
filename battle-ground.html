@@ -108,17 +108,19 @@
                 return;
             }
             fetchData();
+            // 4 second mein refresh taaki Joiner ko Room Code turant dikhe
             setInterval(fetchData, 4000); 
         };
 
         async function fetchData() {
             try {
-const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
-            if (!res.ok) throw new Error("Server Error");
+                const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
+                if (!res.ok) throw new Error("Server Response Error");
                 
                 const data = await res.json();
                 if(!data) return;
 
+                // UI mein Data bharna
                 document.getElementById('creatorName').innerText = data.creator_name || "Creator";
                 document.getElementById('joinerName').innerText = data.joiner_name || "Waiting...";
                 document.getElementById('battleAmt').innerText = data.amount || "0";
@@ -140,8 +142,9 @@ const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
                     document.getElementById('roomDisplay').innerText = data.room_code;
                     document.getElementById('creatorAction').style.display = 'none';
                     document.getElementById('joinerMsg').style.display = 'none';
-                    if(!isCreator) document.getElementById('copyBtn').style.display = 'inline-block';
                     document.getElementById('resultArea').style.display = 'block';
+                    // Copy button sirf Joiner ko dikhao
+                    if(!isCreator) document.getElementById('copyBtn').style.display = 'inline-block';
                 }
             } catch (e) { 
                 console.log("API Fetch Error:", e);
@@ -152,13 +155,22 @@ const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
             const code = document.getElementById('roomInput').value;
             if(code.length < 6) return alert("Sahi Room Code daalein!");
 
-            const res = await fetch(`${BACKEND_URL}/api/battles/update-room`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ battleId, roomCode: code })
-            });
-            const result = await res.json();
-            if(result.success) fetchData();
+            try {
+                const res = await fetch(`${API_BASE}/battles/update-room`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ battleId, roomCode: code })
+                });
+                const result = await res.json();
+                if(result.success) {
+                    alert("Room code set ho gaya!");
+                    fetchData();
+                } else {
+                    alert("Error: " + result.error);
+                }
+            } catch (err) {
+                alert("Server error!");
+            }
         }
 
         function copyRoomCode() {
@@ -170,62 +182,60 @@ const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
         function openModal() { document.getElementById('winModal').style.display = 'block'; }
         function closeModal() { document.getElementById('winModal').style.display = 'none'; }
 
-async function uploadWin() {
-    const fileInput = document.getElementById('screenshotFile');
-    const file = fileInput.files[0];
-    
-    if(!file) return alert("Photo select karein!");
+        async function uploadWin() {
+            const fileInput = document.getElementById('screenshotFile');
+            const file = fileInput.files[0];
+            
+            if(!file) return alert("Photo select karein!");
 
-    const formData = new FormData();
-    formData.append('screenshot', file);
-    formData.append('userId', userId);
-    formData.append('battleId', battleId);
-    formData.append('status', 'won');
+            const formData = new FormData();
+            formData.append('screenshot', file);
+            formData.append('userId', userId);
+            formData.append('battleId', battleId);
+            formData.append('status', 'won');
 
-    try { // ✅ Ye 'try' missing tha
-        const res = await fetch(`${API_BASE}/battles/submit-result`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await res.json();
-        if(result.success) { 
-            alert("Result successfully sent!"); 
-            window.location.href = "dashboard.html"; 
-        } else {
-            alert("Error: " + (result.error || "Upload failed"));
+            try {
+                const res = await fetch(`${API_BASE}/battles/submit-result`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await res.json();
+                if(result.success) { 
+                    alert("Result successfully sent! Admin verify karega."); 
+                    window.location.href = "dashboard.html"; 
+                } else {
+                    alert("Error: " + (result.error || "Upload failed"));
+                }
+            } catch (err) {
+                console.error("Upload failed:", err);
+                alert("Internet connection check karein.");
+            }
         }
-    } catch (err) {
-        console.error("Upload failed:", err);
-        alert("Upload fail ho gaya. Internet check karein.");
-    }
-}
 
-async function submitDirectResult(status) {
-    if(!confirm("Kya aap sure hain?")) return;
-    
-    const formData = new FormData();
-    formData.append('userId', userId);
-    formData.append('battleId', battleId);
-    formData.append('status', status);
+        async function submitDirectResult(status) {
+            if(!confirm("Kya aap sure hain?")) return;
+            
+            const formData = new FormData();
+            formData.append('userId', userId);
+            formData.append('battleId', battleId);
+            formData.append('status', status);
 
-    try {
-        const res = await fetch(`${API_BASE}/battles/submit-result`, { 
-            method: 'POST', 
-            body: formData 
-        });
-        const result = await res.json();
-        if(result.success) {
-            window.location.href = "dashboard.html";
-        } else {
-            alert("Error: " + result.error);
-        }
-    } catch (err) {
-        console.error("Error:", err);
-        alert("Action failed!");
-    }
-}
-            window.location.href = "dashboard.html";
+            try {
+                const res = await fetch(`${API_BASE}/battles/submit-result`, { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                const result = await res.json();
+                if(result.success) {
+                    alert("Status updated!");
+                    window.location.href = "dashboard.html";
+                } else {
+                    alert("Error: " + result.error);
+                }
+            } catch (err) {
+                alert("Action failed!");
+            }
         }
     </script>
 </body>

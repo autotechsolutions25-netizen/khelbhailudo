@@ -222,30 +222,35 @@ async function uploadWin() {
         alert("Network Error: Request backend tak nahi pahunchi.");
     }
 }
-        async function submitDirectResult(status) {
-            if(!confirm("Kya aap sure hain?")) return;
-            
-            const formData = new FormData();
-            formData.append('userId', userId);
-            formData.append('battleId', battleId);
-            formData.append('status', status);
 
-            try {
-                const res = await fetch(`${API_BASE}/battles/submit-result`, { 
-                    method: 'POST', 
-                    body: formData 
-                });
-                const result = await res.json();
-                if(result.success) {
-                    alert("Status updated!");
-                    window.location.href = "dashboard.html";
-                } else {
-                    alert("Error: " + result.error);
-                }
-            } catch (err) {
-                alert("Action failed!");
-            }
+
+        
+async function submitDirectResult(status) {
+    if(!confirm(`Kya aap sure hain ki aap match ${status} kar rahe hain?`)) return;
+    
+    // Yahan hum JSON bhejenge FormData ki jagah taaki file ki zaroorat na pade
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('battleId', battleId);
+    formData.append('status', status);
+
+    try {
+        const res = await fetch(`${API_BASE}/battles/submit-result`, { 
+            method: 'POST', 
+            body: formData 
+        });
+        const result = await res.json();
+        if(result.success) {
+            alert("Status updated! Admin approval ka intezar karein.");
+            window.location.href = "dashboard.html";
+        } else {
+            alert("Error: " + result.error);
         }
+    } catch (err) {
+        console.error("Action failed:", err);
+        alert("Server se connection nahi ho paya.");
+    }
+}
     </script>
 </body>
 </html>

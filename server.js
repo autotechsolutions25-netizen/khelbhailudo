@@ -396,12 +396,11 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 // Naya submit-result route
 // C. Screenshot Upload Setup (Multer use karein)
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
-    try {
-        const { userId, battleId, status } = req.body;
+    if (!req.file) {
+        // Agar yahan 'screenshot' key match nahi hui, toh req.file null hoga
+        return res.status(400).json({ success: false, error: "File nahi mili!" });
+    }
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: "File nahi mili!" });
-        }
 
         // File ka extension aur type fix karna
         const fileExt = req.file.mimetype.split('/')[1] || 'png';

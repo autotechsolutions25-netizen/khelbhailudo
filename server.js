@@ -399,7 +399,7 @@ const fileName = `${Date.now()}_battle_${battleId}.png`;
 const { data: uploadData, error: upError } = await supabase.storage
     .from('screenshots')
     .upload(fileName, req.file.buffer, { 
-        contentType: 'image/png', // ✅ Format batana zaroori hai
+        contentType: 'image/png', // ✅ Ye line add karna compulsory hai
         cacheControl: '3600',
         upsert: true 
     });

@@ -443,32 +443,52 @@ app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, 
 });
 
 
-// KYC Submission Route
+// KYC Submission with Aadhar Upload
 app.post('/api/user/submit-kyc', upload.fields([
     { name: 'aadharFront', maxCount: 1 },
     { name: 'aadharBack', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        const { userId, fullName, dob, bankName, accountNo, ifsc } = req.body;
-        
-        // Supabase mein images upload karne ka logic (jaisa humne battles ke liye kiya tha)
-        // Yahan images upload karke unke URL nikalne honge...
+        const { userId, bankAcc, ifsc, upiId, whatsapp } = req.body;
+        let frontUrl = null;
+        let backUrl = null;
 
-        // Database Update
+        // 1. Upload Aadhar Front
+        if (req.files['aadharFront']) {
+            const frontFile = req.files['aadharFront'][0];
+            const frontName = `kyc_${userId}_front_${Date.now()}.png`;
+            const { data } = await supabase.storage.from('screenshots').upload(frontName, frontFile.buffer, { contentType: frontFile.mimetype });
+            const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(frontName);
+            frontUrl = urlData.publicUrl;
+        }
+
+        // 2. Upload Aadhar Back
+        if (req.files['aadharBack']) {
+            const backFile = req.files['aadharBack'][0];
+            const backName = `kyc_${userId}_back_${Date.now()}.png`;
+            const { data } = await supabase.storage.from('screenshots').upload(backName, backFile.buffer, { contentType: backFile.mimetype });
+            const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(backName);
+            backUrl = urlData.publicUrl;
+        }
+
+        // 3. Update Database
         await pool.query(`
             UPDATE users SET 
-                full_name = $1, 
-                kyc_status = 'pending',
-                bank_account_no = $2,
-                ifsc_code = $3
-            WHERE id = $4`, 
-            [fullName, accountNo, ifsc, userId]
+                bank_account_no = $1, 
+                ifsc_code = $2, 
+                upi_id = $3, 
+                whatsapp_no = $4,
+                aadhar_front_url = $5,
+                aadhar_back_url = $6,
+                kyc_status = 'pending'
+            WHERE id = $7`, 
+            [bankAcc, ifsc, upiId, whatsapp, frontUrl, backUrl, userId]
         );
 
-        res.json({ success: true, message: "KYC submitted successfully!" });
+        res.json({ success: true, message: "KYC details and Aadhar submitted!" });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "KYC upload failed" });
+        console.error("KYC Error:", err.message);
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 

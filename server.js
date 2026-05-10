@@ -497,15 +497,42 @@ app.post('/api/user/submit-kyc', upload.fields([
 // 5. Withdrawals
 app.post('/api/withdraw/request', async (req, res) => {
     const { userId, amount } = req.body;
+    const client = await pool.connect();
+
     try {
-        const user = (await pool.query('SELECT earning_balance FROM users WHERE id = $1', [userId])).rows[0];
-        if (parseFloat(user.earning_balance) < parseFloat(amount)) return res.status(400).json({ message: "Low Balance" });
-        await pool.query('BEGIN');
-        await pool.query('INSERT INTO withdrawals (user_id, amount, status) VALUES ($1, $2, $3)', [userId, amount, 'pending']);
-        await pool.query('UPDATE users SET earning_balance = earning_balance - $1 WHERE id = $2', [amount, userId]);
-        await pool.query('COMMIT');
-        res.json({ success: true });
-    } catch (err) { await pool.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
+        await client.query('BEGIN');
+
+        // 1. User ka balance check karein (earning_balance se withdraw hoga)
+        const userRes = await client.query('SELECT earning_balance FROM users WHERE id = $1', [userId]);
+        const user = userRes.rows[0];
+
+        if (!user || parseFloat(user.earning_balance) < parseFloat(amount)) {
+            throw new Error("Insufficient Winning Balance!");
+        }
+
+        // 2. Earning balance se amount minus karein
+        await client.query(
+            'UPDATE users SET earning_balance = earning_balance - $1 WHERE id = $2',
+            [amount, userId]
+        );
+
+        // 3. Transactions table mein entry karein (Kyuki withdrawals table ab nahi hai)
+        await client.query(
+            `INSERT INTO transactions (user_id, amount, type, status, created_at) 
+             VALUES ($1, $2, 'withdrawal', 'pending', NOW())`,
+            [userId, amount]
+        );
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: "Withdrawal request submitted successfully!" });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Withdraw Error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
 });
 
 

@@ -172,15 +172,15 @@ const res = await fetch(`${API_BASE}/battles/details/${battleId}`);
 
 async function uploadWin() {
     const fileInput = document.getElementById('screenshotFile');
-    const file = fileInput.files[0];
+    const file = fileInput.files[0]; // Pehle file object nikalein
     
     if(!file) return alert("Pehle screenshot select karein!");
 
-const formData = new FormData();
-formData.append('screenshot', fileInput.files[0]); // File object check karein
-formData.append('userId', userId);
-formData.append('battleId', battleId);
-formData.append('status', 'won');
+    const formData = new FormData();
+    formData.append('screenshot', file); // ✅ Yahan direct 'file' object dein
+    formData.append('userId', userId);
+    formData.append('battleId', battleId);
+    formData.append('status', 'won');
 
 try {
             // FIX: res ko yahan define kiya

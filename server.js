@@ -714,6 +714,33 @@ app.post('/api/admin/reject-kyc', async (req, res) => {
 });
 
 
+// 1. Pending Withdrawals Fetch karna
+app.get('/api/admin/withdrawals/pending', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT w.*, u.username, u.mobile_no, u.upi_id 
+            FROM transactions w 
+            JOIN users u ON w.user_id = u.id 
+            WHERE w.type = 'withdrawal' AND w.status = 'pending'
+            ORDER BY w.created_at DESC`);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Withdrawal Approve karna
+app.post('/api/admin/withdrawals/approve', async (req, res) => {
+    const { withdrawId } = req.body;
+    try {
+        await pool.query("UPDATE transactions SET status = 'success' WHERE id = $1", [withdrawId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

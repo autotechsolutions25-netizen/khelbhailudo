@@ -397,47 +397,47 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 // Naya submit-result route
 // C. Screenshot Upload Setup (Multer use karein)
 app.post('/api/battles/submit-result', upload.single('screenshot'), async (req, res) => {
-    // Check 1: Kya file backend tak aayi?
-    if (!req.file) {
-        console.log("Multer Error: No file in request. Body:", req.body);
-        return res.status(400).json({ success: false, error: "File nahi mili!" });
-    }
+    try {
+        const { userId, battleId, status } = req.body;
+        let finalPublicUrl = null;
 
+        // Sirf 'won' status hone par hi file check hogi
+        if (status === 'won') {
+            if (!req.file) {
+                return res.status(400).json({ success: false, error: "Winner ke liye screenshot zaroori hai!" });
+            }
 
-        // File ka extension aur type fix karna
-        const fileExt = req.file.mimetype.split('/')[1] || 'png';
-        const fileName = `${Date.now()}_battle_${battleId}.${fileExt}`;
+            const fileExt = req.file.mimetype.split('/')[1] || 'png';
+            const fileName = `${Date.now()}_battle_${battleId}.${fileExt}`;
 
-        // Supabase Upload - Sabse important part
-        const { data: uploadData, error: upError } = await supabase.storage
-            .from('screenshots')
-            .upload(fileName, req.file.buffer, { 
-                contentType: req.file.mimetype, // ✅ Browser se aaya hua sahi type use karein
-                cacheControl: '3600',
-                upsert: true 
-            });
+            const { data: uploadData, error: upError } = await supabase.storage
+                .from('screenshots')
+                .upload(fileName, req.file.buffer, { 
+                    contentType: req.file.mimetype,
+                    upsert: true 
+                });
 
-        if (upError) throw upError;
+            if (upError) throw upError;
 
-        // Public URL nikaalein
-        const { data: urlData } = supabase.storage
-            .from('screenshots')
-            .getPublicUrl(fileName);
+            const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(fileName);
+            finalPublicUrl = urlData.publicUrl;
+        }
 
-        const finalPublicUrl = urlData.publicUrl;
-
-        // Database Update
+        // Database Update (Har case ke liye: won, lost, cancel)
         await pool.query(
-            `UPDATE battles SET result_status = $1, screenshot_url = $2, status = $3, 
-             winner_id = CASE WHEN $1 = 'won' THEN $4 ELSE winner_id END 
-             WHERE id = $5`,
-            [status, finalPublicUrl, 'pending_approval', userId, battleId]
+            `UPDATE battles SET 
+                result_status = $1, 
+                screenshot_url = $2, 
+                status = $3, 
+                winner_id = CASE WHEN $1 = 'won' THEN winner_id ELSE winner_id END 
+             WHERE id = $4`,
+            [status, finalPublicUrl, 'pending_approval', battleId]
         );
 
-        res.json({ success: true, url: finalPublicUrl });
+        res.json({ success: true, message: "Result updated successfully!" });
 
     } catch (err) {
-        console.error("Upload Error:", err.message);
+        console.error("Critical Upload Error:", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });

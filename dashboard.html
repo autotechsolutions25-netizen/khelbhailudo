@@ -162,6 +162,50 @@
         <div id="transList"></div>
     </div>
 
+
+    <!-- Wallet History Section -->
+<div id="walletHis" class="page-section">
+    <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Wallet History</h3></div>
+    <div id="walletList"></div>
+</div>
+
+<!-- Refer History Section -->
+<div id="referHis" class="page-section">
+    <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Refer History</h3></div>
+    <div id="referList"><p style="text-align:center; padding:20px;">Abhi tak koi referral nahi hai.</p></div>
+</div>
+
+<!-- Refer & Earn Section -->
+<div id="referearn" class="page-section">
+    <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Refer & Earn</h3></div>
+    <div class="history-card" style="text-align:center;">
+        <i class="fas fa-gift fa-3x" style="color:var(--accent); margin-bottom:15px;"></i>
+        <h4>Invite Friends & Earn</h4>
+        <p style="font-size:12px; color:#94a3b8;">Har referral par paayein ₹10 ka bonus!</p>
+        <div style="background:#0f172a; padding:15px; border-radius:10px; margin:15px 0; border:1px dashed var(--primary);">
+            <span style="font-size:10px; color:var(--primary);">YOUR REFER CODE</span><br>
+            <b id="myReferCode" style="font-size:20px; letter-spacing:2px;">LOADING...</b>
+        </div>
+        <button class="btn-proceed" onclick="shareReferral()">SHARE NOW</button>
+    </div>
+</div>
+
+<!-- Notifications Section -->
+<div id="notifications" class="page-section">
+    <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Notifications</h3></div>
+    <div id="notifList"><p style="text-align:center; padding:20px;">Koi nayi notification nahi hai.</p></div>
+</div>
+
+<!-- Policy Section -->
+<div id="policy" class="page-section">
+    <div class="section-header"><i class="fas fa-arrow-left" onclick="closeSections()"></i><h3>Our Policies</h3></div>
+    <div class="history-card" style="font-size:13px; line-height:1.6;">
+        <p><b>1. Fair Play:</b> Kisi bhi tarah ki cheating karne par account ban kar diya jayega.</p>
+        <p><b>2. Withdrawals:</b> Minimum withdrawal ₹100 hai aur Admin fee 5% lagegi.</p>
+        <p><b>3. Support:</b> 24/7 help ke liye WhatsApp use karein.</p>
+    </div>
+</div>
+
     <script>
         const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
         const userId = localStorage.getItem('userId');
@@ -270,6 +314,35 @@
                 `).join('') || '<p>No transactions found.</p>';
             } catch (err) {}
         }
+
+        // openSection function ko update karein
+function openSection(id) {
+    toggleMenu();
+    // Saare sections band karein
+    document.querySelectorAll('.page-section').forEach(s => s.style.display = 'none');
+    // Target section kholein
+    const target = document.getElementById(id);
+    if(target) {
+        target.style.display = 'block';
+    } else {
+        alert("Ye section jald hi chalu hoga!");
+    }
+
+    // Data load logic
+    if(id === 'gameHistorySection') fetchGameHistory();
+    if(id === 'transSection' || id === 'walletHis') fetchTransactions();
+    if(id === 'referearn') {
+        // Maan lijiye user ka Mobile No hi Refer Code hai
+        document.getElementById('myReferCode').innerText = localStorage.getItem('userMobile') || "GUEST123";
+    }
+}
+
+// Referral share karne ka function
+function shareReferral() {
+    const code = document.getElementById('myReferCode').innerText;
+    const text = `Join Ludo Empire using my code ${code} and earn ₹10 bonus! Download now: [YOUR_LINK]`;
+    window.open(`whatsapp://send?text=${encodeURIComponent(text)}`);
+}
 
         function logout() { localStorage.clear(); window.location.href = "index.html"; }
     </script>

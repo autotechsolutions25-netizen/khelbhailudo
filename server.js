@@ -728,11 +728,42 @@ app.get('/api/admin/users/list', async (req, res) => {
 // 1. KYC Approve Route
 app.post('/api/admin/approve-kyc', async (req, res) => {
     const { userId } = req.body;
+    const client = await pool.connect();
+
     try {
-        await pool.query("UPDATE users SET kyc_status = 'approved' WHERE id = $1", [userId]);
-        res.json({ success: true, message: "User approved" });
+        await client.begin();
+
+        // 1. User ka KYC status 'approved' update karein
+        await client.query("UPDATE users SET kyc_status = 'approved' WHERE id = $1", [userId]);
+
+        // 2. Check karein ki kya ye user kisi ke referral se aaya hai
+        const userRes = await client.query("SELECT referred_by FROM users WHERE id = $1", [userId]);
+        const referredBy = userRes.rows[0]?.referred_by;
+
+        if (referredBy) {
+            // 3. Refer karne waale user ko ₹10 ka referral bonus dein (Earning Balance mein)
+            await client.query(
+                "UPDATE users SET earning_balance = earning_balance + 10 WHERE id = $1",
+                [referredBy]
+            );
+
+            // 4. Refer karne waale ki transactions history mein entry karein
+            await client.query(
+                `INSERT INTO transactions (user_id, amount, type, status, created_at) 
+                 VALUES ($1, 10, 'referral_bonus', 'success', NOW())`,
+                [referredBy]
+            );
+        }
+
+        await client.commit();
+        res.json({ success: true, message: "User approved and referral bonus processed!" });
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        await client.rollback();
+        console.error("KYC Approval Error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
     }
 });
 

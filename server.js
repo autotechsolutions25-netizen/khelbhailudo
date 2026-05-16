@@ -68,12 +68,6 @@ const upload = multer({
 
 
 
-// --- File ke ekdum top par rakhna in imports ko ---
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs'); // Top-level import for optimized resource pool
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-
 // 1. User Registration (Anti-Undefined Strict Cloud Stream Flow - Fully Fixed)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {

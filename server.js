@@ -910,6 +910,37 @@ app.get('/api/user/referrals/:userId', async (req, res) => {
 });
 
 
+// 1. Admin se Notification Send karne ka Route
+app.post('/api/admin/notifications/add', async (req, res) => {
+    const { title, message } = req.body;
+    if (!title || !message) {
+        return res.status(400).json({ success: false, error: "Title aur Message zaroori hain!" });
+    }
+    try {
+        await pool.query(
+            "INSERT INTO notifications (title, message, created_at) VALUES ($1, $2, NOW())",
+            [title, message]
+        );
+        res.json({ success: true, message: "Notification sent successfully!" });
+    } catch (err) {
+        console.error("Notification Add Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Users ke liye Notification Fetch karne ka Route
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM notifications ORDER BY created_at DESC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Notification Fetch Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

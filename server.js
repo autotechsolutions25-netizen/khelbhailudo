@@ -1068,23 +1068,22 @@ app.get('/api/admin/users', async (req, res) => {
 });
 
 
-// 2. Route to Update KYC Status & Verification (Approve/Reject Fix)// 2. Updated: Route to Direct User Verification (is_verified = true/false)
-// 2. Updated Route to Direct User Verification (Strict Boolean Sync)
+
+// ADMIN USER VERIFICATION - Only triggers Login Activation (Removes confusion with KYC)
 app.post('/api/admin/user/verify', async (req, res) => {
     const { userId, action } = req.body; 
     
     if (!userId || !action) {
-        return res.status(400).json({ success: false, error: "Missing parameters: userId aur action donon zaroori hain!" });
+        return res.status(400).json({ success: false, error: "Missing fields: userId aur action zaroori hain!" });
     }
     
     try {
-        // Direct absolute evaluation
         const verifyStatus = (action.toLowerCase() === 'approve');
         const targetUserId = parseInt(userId);
 
-        console.log(`Executing absolute verification query: User #${targetUserId} -> is_verified = ${verifyStatus}`);
+        console.log(`Setting verification flag in database: User #${targetUserId} -> is_verified = ${verifyStatus}`);
 
-        // Update statement affecting boolean blocks
+        // Only updates the boolean login flag column, leaves aadhar/kyc columns untouched
         const result = await pool.query(
             `UPDATE users 
              SET is_verified = $1 
@@ -1094,19 +1093,17 @@ app.post('/api/admin/user/verify', async (req, res) => {
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, error: "Database mapping failed: User ID nahi mila." });
+            return res.status(404).json({ success: false, error: "User record not found in system." });
         }
-
-        console.log("Database response after update:", result.rows[0]);
 
         return res.status(200).json({ 
             success: true, 
-            message: `User verification successfully set to ${verifyStatus}`,
-            updatedUser: result.rows[0]
+            message: `User login access updated to ${verifyStatus}`,
+            user: result.rows[0]
         });
     } catch (err) {
-        console.error("User Verification Critical Crash:", err.message);
-        return res.status(500).json({ success: false, error: "Database transaction error: " + err.message });
+        console.error("Critical Verification Error:", err.message);
+        return res.status(500).json({ success: false, error: "Database state transition failed." });
     }
 });
 

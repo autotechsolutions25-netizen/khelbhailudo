@@ -1069,36 +1069,47 @@ app.get('/api/admin/users', async (req, res) => {
 
 
 // 2. Route to Update KYC Status & Verification (Approve/Reject Fix)// 2. Updated: Route to Direct User Verification (is_verified = true/false)
+// 2. Updated Route to Direct User Verification (Strict Boolean Sync)
 app.post('/api/admin/user/verify', async (req, res) => {
-    const { userId, action } = req.body; // action can be 'approve' or 'reject'
+    const { userId, action } = req.body; 
     
     if (!userId || !action) {
-        return res.status(400).json({ success: false, error: "Missing parameters: userId aur action zaroori hain!" });
+        return res.status(400).json({ success: false, error: "Missing parameters: userId aur action donon zaroori hain!" });
     }
     
     try {
-        // Agar action 'approve' hai toh true, nahi toh false
+        // Direct absolute evaluation
         const verifyStatus = (action.toLowerCase() === 'approve');
+        const targetUserId = parseInt(userId);
 
-        console.log(`Setting Verification for User ID ${userId} to: ${verifyStatus}`);
+        console.log(`Executing absolute verification query: User #${targetUserId} -> is_verified = ${verifyStatus}`);
 
-        // Sirf is_verified column ko update karne ki direct query
-        await pool.query(
+        // Update statement affecting boolean blocks
+        const result = await pool.query(
             `UPDATE users 
              SET is_verified = $1 
-             WHERE id = $2`, 
-            [verifyStatus, userId]
+             WHERE id = $2
+             RETURNING id, is_verified`, 
+            [verifyStatus, targetUserId]
         );
 
-        res.status(200).json({ 
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "Database mapping failed: User ID nahi mila." });
+        }
+
+        console.log("Database response after update:", result.rows[0]);
+
+        return res.status(200).json({ 
             success: true, 
-            message: `User verification successfully set to ${verifyStatus}` 
+            message: `User verification successfully set to ${verifyStatus}`,
+            updatedUser: result.rows[0]
         });
     } catch (err) {
-        console.error("User Verification Error:", err.message);
-        res.status(500).json({ success: false, error: "Database verification failed: " + err.message });
+        console.error("User Verification Critical Crash:", err.message);
+        return res.status(500).json({ success: false, error: "Database transaction error: " + err.message });
     }
 });
+
 
 // 3. Route to Delete a User Request / Account completely
 app.delete('/api/admin/user/delete/:id', async (req, res) => {

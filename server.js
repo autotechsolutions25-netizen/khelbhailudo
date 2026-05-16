@@ -858,6 +858,28 @@ app.post('/api/admin/withdrawals/reject', async (req, res) => {
 });
 
 
+// --- NEW: Fetch User Referral History ---
+app.get('/api/user/referrals/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // Hum un users ki list nikaal rahe hain jinka referred_by is user ki ID hai
+        const result = await pool.query(`
+            SELECT id, username, kyc_status, created_at 
+            FROM users 
+            WHERE referred_by = $1 
+            ORDER BY created_at DESC`, 
+            [userId]
+        );
+        
+        // Frontend ko array format mein data bhejenge
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Referral Fetch Error:", err.message);
+        res.status(500).json({ error: "Server error while fetching referrals" });
+    }
+});
+
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is live on port: ${PORT}`);

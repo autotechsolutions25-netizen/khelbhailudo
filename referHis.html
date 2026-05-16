@@ -16,7 +16,6 @@
         .header i { font-size: 20px; cursor: pointer; color: var(--primary); }
         .header h3 { margin: 0; font-size: 18px; }
 
-        /* Refer Stats */
         .refer-stats {
             margin: 15px; padding: 20px;
             background: linear-gradient(135deg, #6366f1, #a855f7);
@@ -25,7 +24,6 @@
         .stat-box span { font-size: 11px; opacity: 0.9; text-transform: uppercase; }
         .stat-box h2 { margin: 5px 0 0; font-size: 24px; }
 
-        /* List Section */
         .history-container { padding: 15px; }
         .refer-card {
             background: var(--card-bg); border-radius: 12px; padding: 15px;
@@ -69,103 +67,95 @@
         <p class="no-data">Loading referrals...</p>
     </div>
 
-  <script>
-    const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
-    
-    // Safety Fallback Layer: Typecast raw storage string into an absolute integer
-    const rawUserId = localStorage.getItem('userId');
-    const userId = (rawUserId && !isNaN(rawUserId)) ? parseInt(rawUserId) : null;
+    <script>
+        const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
+        const rawUserId = localStorage.getItem('userId');
+        const userId = (rawUserId && !isNaN(rawUserId)) ? parseInt(rawUserId) : null;
 
-    window.onload = () => {
-        console.log("Stored User ID on page load (Raw):", rawUserId);
-        console.log("Parsed User ID for API:", userId);
-        
-        if(!userId) { 
-            alert("Session expired! Please login again.");
-            window.location.href = "index.html"; 
-            return; 
-        }
-        fetchReferralHistory();
-    };
-
-    async function fetchReferralHistory() {
-        const listDiv = document.getElementById('referList');
-        if (!listDiv) return;
-
-        try {
-            console.log(`Sending explicit API Request to: ${API_BASE}/user/referrals/${userId}`);
-            
-            // Explicitly pass parsed absolute integer to verify parameters matching
-            const res = await fetch(`${API_BASE}/user/referrals/${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            console.log("HTTP Response Status received:", res.status);
-            
-            if (!res.ok) {
-                const errText = await res.text();
-                throw new Error(`Server responded with status ${res.status}. Details: ${errText}`);
+        window.onload = () => {
+            if(!userId) { 
+                alert("Session expired! Please login again.");
+                window.location.href = "index.html"; 
+                return; 
             }
+            fetchReferralHistory();
+        };
 
-            const data = await res.json();
-            console.log("Raw Data Received from Server Array:", data);
+        async function fetchReferralHistory() {
+            const listDiv = document.getElementById('referList');
+            if (!listDiv) return;
 
-            // Interface handling layer for empty datasets or array check parameters
-            if(!data || !Array.isArray(data) || data.length === 0) {
-                listDiv.innerHTML = `
-                    <div class="no-data">
-                        <i class="fas fa-users fa-3x"></i>
-                        <p>No referrals found in database for your ID.</p>
-                        <small style="color:#64748b; display:block; margin-top:5px;">Connected to profile ID: ${userId} (Records: 0)</small>
-                    </div>`;
-                document.getElementById('totalReferEarn').innerText = "₹0";
-                document.getElementById('totalFriends').innerText = "0";
-                return;
-            }
-
-            let totalEarned = 0;
-            let friendsCount = data.length;
-
-            listDiv.innerHTML = data.map(r => {
-                // Highly flexible parsing to prevent errors if status returns boolean, null, or variations
-                const currentStatus = r.kyc_status ? r.kyc_status.toString().trim().toLowerCase() : 'pending';
-                const isApproved = (currentStatus === 'approved' || r.is_verified === true);
+            try {
+                const res = await fetch(`${API_BASE}/user/referrals/${userId}`);
                 
-                if(isApproved) totalEarned += 10;
-                const joinDate = r.created_at ? new Date(r.created_at).toLocaleDateString() : '--/--/----';
+                // Real-time Gateway Mismatch Handler (Screenshot 1 solution)
+                if (res.status === 502) {
+                    listDiv.innerHTML = `
+                        <div class="no-data" style="color:var(--accent);">
+                            <i class="fas fa-server fa-2x"></i>
+                            <p>Render Server is waking up (502 Gateway).</p>
+                            <small style="color:#64748b;">Automatic retry in 4 seconds...</small>
+                        </div>`;
+                    setTimeout(fetchReferralHistory, 4000);
+                    return;
+                }
 
-                return `
-                    <div class="refer-card">
-                        <div class="user-info">
-                            <b>${r.username || 'Unknown User'}</b>
-                            <small>Joined: ${joinDate}</small>
-                        </div>
-                        <div class="reward-info">
-                            <span class="reward-amt">${isApproved ? '+ ₹10' : '₹0'}</span>
-                            <span class="status-tag ${isApproved ? 'st-success' : 'st-pending'}">
-                                ${isApproved ? 'VERIFIED' : 'PENDING KYC'}
-                            </span>
-                        </div>
+                if (!res.ok) {
+                    throw new Error(`Server status returned error ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                if(!data || !Array.isArray(data) || data.length === 0) {
+                    listDiv.innerHTML = `
+                        <div class="no-data">
+                            <i class="fas fa-users fa-3x"></i>
+                            <p>Abhi tak koi referral nahi mila hai.</p>
+                            <small style="color:#64748b; display:block; margin-top:5px;">Connected to Account ID: ${userId}</small>
+                        </div>`;
+                    document.getElementById('totalReferEarn').innerText = "₹0";
+                    document.getElementById('totalFriends').innerText = "0";
+                    return;
+                }
+
+                let totalEarned = 0;
+                let friendsCount = data.length;
+
+                listDiv.innerHTML = data.map(r => {
+                    const currentStatus = r.kyc_status ? r.kyc_status.toString().trim().toLowerCase() : 'pending';
+                    const isApproved = (currentStatus === 'approved');
+                    
+                    if(isApproved) totalEarned += 10;
+                    const joinDate = r.created_at ? new Date(r.created_at).toLocaleDateString() : '--/--/----';
+
+                    return `
+                        <div class="refer-card">
+                            <div class="user-info">
+                                <b>${r.username || 'Ludo Player'}</b>
+                                <small>Joined: ${joinDate}</small>
+                            </div>
+                            <div class="reward-info">
+                                <span class="reward-amt">${isApproved ? '+ ₹10' : '₹0'}</span>
+                                <span class="status-tag ${isApproved ? 'st-success' : 'st-pending'}">
+                                    ${isApproved ? 'VERIFIED' : 'PENDING KYC'}
+                                </span>
+                            </div>
+                        </div>`;
+                }).join('');
+
+                document.getElementById('totalReferEarn').innerText = "₹" + totalEarned;
+                document.getElementById('totalFriends').innerText = friendsCount;
+
+            } catch (err) {
+                console.error("Critical System Catch:", err);
+                listDiv.innerHTML = `
+                    <div class="no-data" style="color:#ef4444;">
+                        <i class="fas fa-wifi fa-2x"></i>
+                        <p>Connection Timeout or Gateway Blocked.</p>
+                        <small style="color:#64748b;">Retry manually by pulling down or reloading.</small>
                     </div>`;
-            }).join('');
-
-            document.getElementById('totalReferEarn').innerText = "₹" + totalEarned;
-            document.getElementById('totalFriends').innerText = friendsCount;
-
-        } catch (err) {
-            console.error("Frontend Critical Fetch Error:", err);
-            listDiv.innerHTML = `
-                <div class="no-data" style="color:red;">
-                    <i class="fas fa-exclamation-triangle fa-2x"></i>
-                    <p>Failed to load data.</p>
-                    <small style="color: #ef4444; word-break: break-all;">Error: ${err.message}</small>
-                </div>`;
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>

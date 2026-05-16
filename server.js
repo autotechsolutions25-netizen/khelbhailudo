@@ -66,19 +66,36 @@ const upload = multer({
 
 // ROUTES
 
-// 1. User Registration (Updated with Referral System Logic)
+// 1. User Registration (Robust & Safe Image URL Handler)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
-        // req.body se referred_by ko bhi destructure kar rahe hain
         const { fullName, email, mobile, username, password, referred_by } = req.body;
         
-        const front = req.files['aadharFront'] ? `/uploads/${req.files['aadharFront'][0].filename}` : null;
-        const back = req.files['aadharBack'] ? `/uploads/${req.files['aadharBack'][0].filename}` : null;
+        // Safety Layer: Pehle check karein ki req.files exist karta hai ya nahi (taaki server crash na ho)
+        let front = null;
+        let back = null;
 
-        // Validation: Check karein agar referred_by ek valid number hai, nahi toh null set karein
+        if (req.files) {
+            if (req.files['aadharFront'] && req.files['aadharFront'][0]) {
+                front = `/uploads/${req.files['aadharFront'][0].filename}`;
+            }
+            if (req.files['aadharBack'] && req.files['aadharBack'][0]) {
+                back = `/uploads/${req.files['aadharBack'][0].filename}`;
+            }
+        }
+
+        // Agar check bypass ho kar abhi bhi string 'undefined' aa rahi ho toh use strict null karein
+        if (front === '/uploads/undefined' || !front) front = null;
+        if (back === '/uploads/undefined' || !back) back = null;
+
+        // Validation: Referral code helper check
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        // Query mein referred_by column aur $8 parameter add kiya hai
+        console.log("--- New Registration Log ---");
+        console.log("Username:", username);
+        console.log("Aadhar Front Saved As:", front);
+        console.log("Aadhar Back Saved As:", back);
+
         await pool.query(
             `INSERT INTO users (
                 full_name, 
@@ -96,8 +113,8 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
         
         res.json({ success: true });
     } catch (err) {
-        console.error("Reg Error:", err.message);
-        res.status(500).json({ error: err.message });
+        console.error("Reg Critical Error Log:", err.message);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

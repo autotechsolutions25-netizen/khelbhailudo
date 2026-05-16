@@ -129,20 +129,37 @@
         </div>
 
 
-        <div id="section-notifications" class="content-card" style="display:none;">
+<div id="section-notifications" class="content-card" style="display:none;">
     <h3>Push New Notification to Users</h3>
-    <div style="max-width: 500px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+    <div style="max-width: 100%; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
         <div style="margin-bottom: 15px;">
             <label style="display:block; font-weight:bold; margin-bottom:5px;">Notification Title</label>
             <input type="text" id="notifTitle" placeholder="E.g., Mega Tournament Alert! 🏆" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
         </div>
         <div style="margin-bottom: 15px;">
             <label style="display:block; font-weight:bold; margin-bottom:5px;">Message Text</label>
-            <textarea id="notifMessage" rows="4" placeholder="Apna message yahan likhein..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-family:inherit;"></textarea>
+            <textarea id="notifMessage" rows="3" placeholder="Apna message yahan likhein..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-family:inherit;"></textarea>
         </div>
         <button class="btn btn-success" onclick="sendNotification()" style="width: 100%; padding: 12px; font-size: 14px;">
             <i class="fas fa-paper-plane"></i> Broadcast Notification
         </button>
+    </div>
+
+    <h3>Sent Notifications History</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Title</th>
+                    <th>Message</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="adminNotifHistoryBody">
+                <tr><td colspan="4" align="center">Loading history...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
         
@@ -366,7 +383,8 @@
             } catch(e) {}
         }
 
-        async function sendNotification() {
+// 1. Notification Send aur uske baad List Refresh karne ka function
+async function sendNotification() {
     const title = document.getElementById('notifTitle').value.trim();
     const message = document.getElementById('notifMessage').value.trim();
 
@@ -383,11 +401,67 @@
             alert("Notification sabhi users ko bhej diya gaya hai! 🎉");
             document.getElementById('notifTitle').value = '';
             document.getElementById('notifMessage').value = '';
+            loadAdminNotifications(); // List ko turant refresh karein
         } else {
             alert("Error: " + data.error);
         }
     } catch (e) {
         alert("Server error, try again.");
+    }
+}
+
+// 2. NEW: History Table mein data load karne ka function
+async function loadAdminNotifications() {
+    const body = document.getElementById('adminNotifHistoryBody');
+    if(!body) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/notifications`);
+        const data = await res.json();
+        
+        if(!data || data.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" align="center">Abhi tak koi notification nahi bheja gaya hai.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = data.map(n => {
+            const timeString = n.created_at ? new Date(n.created_at).toLocaleString() : '--';
+            return `
+                <tr>
+                    <td style="font-size:12px; color:#64748b;">${timeString}</td>
+                    <td style="font-weight:bold; text-align:left;">${n.title}</td>
+                    <td style="text-align:left; max-width:300px; word-break:break-word;">${n.message}</td>
+                    <td>
+                        <button class="btn btn-danger" style="padding:5px 10px; font-size:11px;" onclick="deleteNotification(${n.id})">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error("Admin Notif Load Error:", e);
+        body.innerHTML = '<tr><td colspan="4" align="center" style="color:red;">History load karne mein dikkat aayi.</td></tr>';
+    }
+}
+
+// 3. NEW: Notification Delete karne ka function
+async function deleteNotification(id) {
+    if(!confirm("Kya aap is notification ko delete karna chahte hain? Users ko dikhna band ho jayega.")) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/admin/notifications/delete/${id}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("Notification successfully delete ho gaya!");
+            loadAdminNotifications(); // List refresh karein
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (e) {
+        alert("Server communication failed.");
     }
 }
 

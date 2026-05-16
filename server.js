@@ -878,21 +878,34 @@ app.post('/api/admin/withdrawals/reject', async (req, res) => {
 // --- NEW: Fetch User Referral History ---
 app.get('/api/user/referrals/:userId', async (req, res) => {
     const { userId } = req.params;
+    
+    // Safety check for ID
+    if (!userId || userId === 'undefined' || isNaN(userId)) {
+        console.log("Invalid User ID received in Referrals:", userId);
+        return res.status(400).json({ error: "Invalid User ID" });
+    }
+
     try {
-        // Hum un users ki list nikaal rahe hain jinka referred_by is user ki ID hai
+        console.log(`Fetching referrals for User ID: ${userId}`);
+
+        // Query check: users table se details nikalna
         const result = await pool.query(`
             SELECT id, username, kyc_status, created_at 
             FROM users 
             WHERE referred_by = $1 
             ORDER BY created_at DESC`, 
-            [userId]
+            [parseInt(userId)]
         );
         
-        // Frontend ko array format mein data bhejenge
+        console.log("Database response rows count:", result.rows.length);
+        console.log("Data sent to frontend:", result.rows);
+
+        // CORS safety: Response explicitly headers ke saath bhejte hain
+        res.setHeader('Content-Type', 'application/json');
         res.json(result.rows);
     } catch (err) {
-        console.error("Referral Fetch Error:", err.message);
-        res.status(500).json({ error: "Server error while fetching referrals" });
+        console.error("Referral Fetch Error in Backend:", err.message);
+        res.status(500).json({ error: "Server error while fetching referrals", details: err.message });
     }
 });
 

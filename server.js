@@ -1029,37 +1029,20 @@ app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
 });
 
 
-// Get All Users with Absolute Image URLs for GitHub Pages Compatibility
+// Get All Users for Admin Panel (FIXED: Added is_verified column)
 app.get('/api/admin/users', async (req, res) => {
     try {
+        // CRITICAL FIX: explicit select kiya hai is_verified column ko
         const result = await pool.query(`
-            SELECT id, username, mobile_no, wallet_balance, 
+            SELECT id, username, mobile_no, wallet_balance, is_verified,
                    COALESCE(kyc_status, 'pending') as kyc_status, 
                    aadhar_front_url, aadhar_back_url, created_at 
             FROM users 
             ORDER BY id DESC
         `);
-
-        // Render Server URL config mapping
-        const SERVER_URL = "https://khel-bhai-luso-backend-service.onrender.com";
-
-        // Har row ke image path ko filter karke absolute URL mein convert karein
-        const formattedUsers = result.rows.map(user => {
-            let front = user.aadhar_front_url ? user.aadhar_front_url.trim() : '';
-            let back = user.aadhar_back_url ? user.aadhar_back_url.trim() : '';
-
-            // Agar path dynamic backend upload se hai (/uploads/...) toh full URL jodien
-            if (front && front.startsWith('/uploads')) front = `${SERVER_URL}${front}`;
-            if (back && back.startsWith('/uploads')) back = `${SERVER_URL}${back}`;
-
-            return {
-                ...user,
-                aadhar_front_url: front,
-                aadhar_back_url: back
-            };
-        });
         
-        res.status(200).json(formattedUsers);
+        console.log("Backend Users Fetch sample row:", result.rows[0]); // Debugging log
+        res.status(200).json(result.rows);
     } catch (err) {
         console.error("Admin Users Fetch Error:", err.message);
         res.status(500).json([]); 

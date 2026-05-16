@@ -232,13 +232,12 @@
             const nav = document.getElementById('nav-' + id);
             if(nav) nav.classList.add('active');
 
-            // Clean single function bindings for section routers to fix double loops
             if(id === 'kyc') loadPendingKyc();
             if(id === 'withdrawals') loadPendingWithdrawals();
             if(id === 'battles') loadBattles();
             if(id === 'stats') updateStats();
             if(id === 'notifications') loadAdminNotifications();
-            if(id === 'users') loadAdminUsers(); // Only loadAdminUsers handles directories now
+            if(id === 'users') loadAdminUsers(); // Pure single-point call
         }
 
         async function loadBattles() {
@@ -499,7 +498,7 @@
                 }
 
                 body.innerHTML = users.map(user => {
-                    // Air-tight strict boolean tracking logic
+                    // Strict parsing to trace real boolean status values from payload
                     const isVerified = (user.is_verified === true || user.is_verified === 'true' || parseInt(user.is_verified) === 1);
                     
                     const statusText = isVerified ? 'VERIFIED' : 'PENDING APPROVAL';
@@ -557,7 +556,7 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    loadAdminUsers(); // Triggers table re-rendering immediately to drop the button from DOM
+                    loadAdminUsers(); // Instantly drops the approve button out from DOM
                     updateStats();
                 } else {
                     alert("Verification operation rejected: " + data.error);

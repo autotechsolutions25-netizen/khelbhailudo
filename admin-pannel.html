@@ -594,19 +594,16 @@ function openDocModal(userId, frontSrc, backSrc, currentStatus) {
     const modal = document.getElementById('documentModal');
     const frontImg = document.getElementById('modalAadharFront');
     const backImg = document.getElementById('modalAadharBack');
-    const actions = document.getElementById('modalActionContainer');
 
-    // Strict regex fallback match filter rule to eliminate corrupted string payloads
+    if (!modal || !frontImg || !backImg) {
+        alert("Error: Document modal HTML elements missing on page.");
+        return;
+    }
+
     function verifyCloudUrl(src) {
         if (!src || typeof src !== 'string') return null;
         const cleanStr = src.trim().toLowerCase();
-        
-        // Block all corrupt variations
-        if (cleanStr === '' || 
-            cleanStr === 'null' || 
-            cleanStr === 'undefined' || 
-            cleanStr.includes('undefined') || 
-            cleanStr.includes('/uploads/null')) {
+        if (cleanStr === '' || cleanStr === 'null' || cleanStr === 'undefined' || cleanStr.includes('undefined') || cleanStr.includes('/uploads/null')) {
             return null;
         }
         return src.trim();
@@ -615,24 +612,18 @@ function openDocModal(userId, frontSrc, backSrc, currentStatus) {
     const finalFrontUrl = verifyCloudUrl(frontSrc);
     const finalBackUrl = verifyCloudUrl(backSrc);
 
-    console.log("Admin Panel Live Target Front Source:", finalFrontUrl);
-    console.log("Admin Panel Live Target Back Source:", finalBackUrl);
-
     frontImg.src = finalFrontUrl ? finalFrontUrl : 'https://placehold.co/250x150?text=Aadhar+Front+Missing';
     backImg.src = finalBackUrl ? finalBackUrl : 'https://placehold.co/250x150?text=Aadhar+Back+Missing';
 
     frontImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
     backImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
 
-    actions.innerHTML = `
-        <button class="btn btn-danger" style="padding:8px 15px;" onclick="updateKycStatus(${userId}, 'rejected').then(closeDocModal)">Reject KYC</button>
-        <button class="btn btn-success" style="padding:8px 15px;" onclick="updateKycStatus(${userId}, 'approved').then(closeDocModal)">Approve KYC</button>
-    `;
     modal.style.display = 'flex';
 }
 
 function closeDocModal() {
-    document.getElementById('documentModal').style.display = 'none';
+    const modal = document.getElementById('documentModal');
+    if (modal) modal.style.display = 'none';
 }
 
 

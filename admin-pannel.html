@@ -203,7 +203,6 @@
                         <img id="modalAadharBack" src="" alt="Not Uploaded" style="width:100%; max-height:180px; object-fit:contain; border:1px solid #e2e8f0; border-radius:6px; background:#f8fafc;">
                     </div>
                 </div>
-                
                 <div id="modalActionContainer" style="margin-top:25px; display:flex; gap:10px; justify-content:flex-end;"></div>
             </div>
         </div>
@@ -224,10 +223,7 @@
                 const el = document.getElementById('section-' + s);
                 if(el) el.style.display = 'none';
             });
-            
-            const targetEl = document.getElementById('section-' + id);
-            if(targetEl) targetEl.style.display = 'block';
-            
+            document.getElementById('section-' + id).style.display = 'block';
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             const nav = document.getElementById('nav-' + id);
             if(nav) nav.classList.add('active');
@@ -237,7 +233,7 @@
             if(id === 'battles') loadBattles();
             if(id === 'stats') updateStats();
             if(id === 'notifications') loadAdminNotifications();
-            if(id === 'users') loadAdminUsers(); // Pure single-point call
+            if(id === 'users') loadAdminUsers(); // FIXED: Removed loadAllUsers() here completely!
         }
 
         async function loadBattles() {
@@ -483,7 +479,7 @@
             } catch (e) { alert("Server communication failed."); }
         }
 
-        // 1. Load All Registered Users (Approve Button removes strictly if True status)
+        // 1. FIXED: Load Admin Users Directory with Strict Boolean Tracking Mapping
         async function loadAdminUsers() {
             const body = document.getElementById('adminUserTableBody');
             if (!body) return;
@@ -498,7 +494,7 @@
                 }
 
                 body.innerHTML = users.map(user => {
-                    // Strict parsing to trace real boolean status values from payload
+                    // Air-tight Boolean Evaluation Check Pattern
                     const isVerified = (user.is_verified === true || user.is_verified === 'true' || parseInt(user.is_verified) === 1);
                     
                     const statusText = isVerified ? 'VERIFIED' : 'PENDING APPROVAL';
@@ -547,7 +543,11 @@
             }
         }
 
+        // 2. FIXED: Click Handler with Confirmation Pop-up Box
         async function executeUserVerification(userId, actionParam) {
+            // Confirmation box configuration check
+            if(!confirm("क्या aap is user account ko verify karna chahte hain? OK karne par ye login kar payega.")) return;
+            
             try {
                 const res = await fetch(`${API_BASE}/admin/user/verify`, {
                     method: 'POST',
@@ -556,12 +556,12 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    loadAdminUsers(); // Instantly drops the approve button out from DOM
+                    loadAdminUsers(); // Instantly clears DOM data rows to drop the button!
                     updateStats();
                 } else {
-                    alert("Verification operation rejected: " + data.error);
+                    alert("Error: " + data.error);
                 }
-            } catch (e) { alert("Server validation layer connection timeout."); }
+            } catch (e) { alert("Network interaction timeout."); }
         }
 
         function openDocModal(userId, frontSrc, backSrc, currentStatus) {

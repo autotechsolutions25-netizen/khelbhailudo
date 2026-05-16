@@ -66,36 +66,36 @@ const upload = multer({
 
 // ROUTES
 
-// 1. User Registration (Robust & Safe Image URL Handler)
+
+// 1. User Registration (Strict Database Link Binding)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
+        console.log("--- Supabase Debug Request Body ---", req.body);
+        console.log("--- Supabase Debug Files ---", req.files);
+
         const { fullName, email, mobile, username, password, referred_by } = req.body;
         
-        // Safety Layer: Pehle check karein ki req.files exist karta hai ya nahi (taaki server crash na ho)
-        let front = null;
-        let back = null;
-
-        if (req.files) {
-            if (req.files['aadharFront'] && req.files['aadharFront'][0]) {
-                front = `/uploads/${req.files['aadharFront'][0].filename}`;
-            }
-            if (req.files['aadharBack'] && req.files['aadharBack'][0]) {
-                back = `/uploads/${req.files['aadharBack'][0].filename}`;
-            }
+        // Strict verification: Check karein agar req.files completely missing hai
+        if (!req.files || !req.files['aadharFront'] || !req.files['aadharBack']) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Backend Error: Aadhaar card images server tak nahi pahunchi! Kripya form aur frontend boundary check karein." 
+            });
         }
 
-        // Agar check bypass ho kar abhi bhi string 'undefined' aa rahi ho toh use strict null karein
-        if (front === '/uploads/undefined' || !front) front = null;
-        if (back === '/uploads/undefined' || !back) back = null;
+        // Agar files hain, toh filename extract karein
+        const frontFile = req.files['aadharFront'][0];
+        const backFile = req.files['aadharBack'][0];
 
-        // Validation: Referral code helper check
+        // Sahi path string format banayein jo Supabase mein store hoga
+        const frontUrl = `/uploads/${frontFile.filename}`;
+        const backUrl = `/uploads/${backFile.filename}`;
+
+        console.log("Supabase me ye string jaa rhi hai -> Front:", frontUrl, " | Back:", backUrl);
+
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        console.log("--- New Registration Log ---");
-        console.log("Username:", username);
-        console.log("Aadhar Front Saved As:", front);
-        console.log("Aadhar Back Saved As:", back);
-
+        // Final query execution
         await pool.query(
             `INSERT INTO users (
                 full_name, 
@@ -108,13 +108,14 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
                 is_verified,
                 referred_by
              ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8)`,
-            [fullName, email, mobile, username, password, front, back, parsedReferBy]
+            [fullName, email, mobile, username, password, frontUrl, backUrl, parsedReferBy]
         );
         
-        res.json({ success: true });
+        return res.status(200).json({ success: true, message: "Data successfully written to Supabase!" });
+
     } catch (err) {
-        console.error("Reg Critical Error Log:", err.message);
-        res.status(500).json({ success: false, error: err.message });
+        console.error("Supabase Write Error Log:", err.message);
+        return res.status(500).json({ success: false, error: "Database Crash: " + err.message });
     }
 });
 

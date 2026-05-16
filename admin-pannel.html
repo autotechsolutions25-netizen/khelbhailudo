@@ -517,62 +517,51 @@ async function loadAdminUsers() {
             return;
         }
 
-        body.innerHTML = users.map(user => {
-            // STRICT STATUS MATCHING - 'undefined' text ko khatam karne ke liye
-            let status = 'PENDING';
-            if (user.kyc_status) {
-                status = user.kyc_status.toString().toUpperCase().trim();
-            } else if (user.is_verified === true) {
-                status = 'APPROVED';
-            }
+// loadAdminUsers ke map loop ke andar ye badlao karein:
+body.innerHTML = users.map(user => {
+    // Check purely on boolean is_verified column
+    const isVerified = user.is_verified === true || user.is_verified === 'true';
+    
+    const statusText = isVerified ? 'VERIFIED' : 'UNVERIFIED';
+    const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';
 
-            let statusStyle = 'background:#fef3c7; color:#d97706;'; // PENDING
-            if(status === 'APPROVED' || status === 'VERIFIED' || status === 'TRUE') {
-                status = 'APPROVED';
-                statusStyle = 'background:#dcfce7; color:#15803d;';
-            } else if(status === 'REJECTED' || status === 'FALSE') {
-                status = 'REJECTED';
-                statusStyle = 'background:#fee2e2; color:#b91c1c;';
-            } else {
-                status = 'PENDING';
-            }
+    const frontImg = user.aadhar_front_url || '';
+    const backImg = user.aadhar_back_url || '';
+    const hasDocs = frontImg !== '' && !frontImg.includes('undefined');
 
-            // Clean Image paths strictly from payload
-            const frontImg = user.aadhar_front_url || '';
-            const backImg = user.aadhar_back_url || '';
-            
-            // Check agar real image path save hua hai ya khali/null hai
-            const hasDocs = frontImg !== '' && !frontImg.includes('undefined') && !frontImg.includes('null');
-
-            return `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding:12px 15px; font-weight:600; color:#64748b;">#${user.id}</td>
-                    <td style="padding:12px 15px; font-weight:bold; color:#1e293b;">${user.username || 'Unknown'}</td>
-                    <td style="padding:12px 15px; color:#334155;">${user.mobile_no || '--'}</td>
-                    <td style="padding:12px 15px; font-weight:600; color:#059669;">₹${user.wallet_balance || 0}</td>
-                    <td style="padding:12px 15px;">
-                        <span style="font-size:11px; font-weight:bold; padding:4px 8px; border-radius:12px; ${statusStyle}">
-                            ${status}
-                        </span>
-                    </td>
-                    <td style="padding:12px 15px;">
-                        <button class="btn" style="padding:5px 10px; font-size:12px; background:${hasDocs ? '#00d2ff' : '#cbd5e1'}; color:${hasDocs ? '#fff' : '#64748b'}; border:none; border-radius:4px; cursor:pointer;" 
-                                onclick="openDocModal(${user.id}, '${frontImg}', '${backImg}', '${status}')">
-                            <i class="fas fa-eye"></i> ${hasDocs ? 'View Docs' : 'No Docs'}
-                        </button>
-                    </td>
-                    <td style="padding:12px 15px; text-align:center; display:flex; gap:8px; justify-content:center;">
-                        ${status !== 'APPROVED' ? `
-                        <button class="btn btn-success" style="padding:5px 10px; font-size:11px;" onclick="updateKycStatus(${user.id}, 'approved')">
-                            <i class="fas fa-check"></i> Approve
-                        </button>` : ''}
-                        <button class="btn btn-danger" style="padding:5px 10px; font-size:11px;" onclick="deleteUserRequest(${user.id})">
-                            <i class="fas fa-trash-alt"></i> Delete
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+    return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding:12px 15px; font-weight:600; color:#64748b;">#${user.id}</td>
+            <td style="padding:12px 15px; font-weight:bold; color:#1e293b;">${user.username || 'Unknown'}</td>
+            <td style="padding:12px 15px; color:#334155;">${user.mobile_no || '--'}</td>
+            <td style="padding:12px 15px; font-weight:600; color:#059669;">₹${user.wallet_balance || 0}</td>
+            <td style="padding:12px 15px;">
+                <span style="font-size:11px; font-weight:bold; padding:4px 8px; border-radius:12px; ${statusStyle}">
+                    ${statusText}
+                </span>
+            </td>
+            <td style="padding:12px 15px;">
+                <button class="btn" style="padding:5px 10px; font-size:12px; background:${hasDocs ? '#00d2ff' : '#cbd5e1'}; color:${hasDocs ? '#fff' : '#64748b'}; border:none; border-radius:4px;" 
+                        onclick="openDocModal(${user.id}, '${frontImg}', '${backImg}', '${statusText}')">
+                    <i class="fas fa-eye"></i> ${hasDocs ? 'View Docs' : 'No Docs'}
+                </button>
+            </td>
+            <td style="padding:12px 15px; text-align:center; display:flex; gap:8px; justify-content:center;">
+                ${!isVerified ? `
+                <button class="btn btn-success" style="padding:5px 10px; font-size:11px;" onclick="updateKycStatus(${user.id}, 'approved')">
+                    <i class="fas fa-check"></i> Approve
+                </button>` : `
+                <button class="btn btn-warning" style="padding:5px 10px; font-size:11px; background:#f59e0b; color:#fff; border:none; border-radius:4px;" onclick="updateKycStatus(${user.id}, 'reject')">
+                    <i class="fas fa-times"></i> Unverify
+                </button>
+                `}
+                <button class="btn btn-danger" style="padding:5px 10px; font-size:11px;" onclick="deleteUserRequest(${user.id})">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+            </td>
+        </tr>
+    `;
+}).join('');
 
     } catch (err) {
         console.error("Render table view error:", err);

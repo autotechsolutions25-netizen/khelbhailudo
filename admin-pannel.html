@@ -625,23 +625,30 @@ function closeDocModal() {
     document.getElementById('documentModal').style.display = 'none';
 }
 
-// 3. Perform Status Modification API Call
+
+        
+// Function updated to hit direct verification endpoint
 async function updateKycStatus(userId, status) {
+    // Agar status frontend se 'approved' aa raha hai toh 'approve' bhejenge, nahi toh 'reject'
+    const actionParam = (status === 'approved' || status === 'approve') ? 'approve' : 'reject';
+    
     try {
-        const res = await fetch(`${API_BASE}/admin/user/update-kyc`, {
+        const res = await fetch(`${API_BASE}/admin/user/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, status })
+            body: JSON.stringify({ userId: userId, action: actionParam })
         });
+        
         const data = await res.json();
         if(data.success) {
-            alert(`User KYC updated status to ${status.toUpperCase()}! 🎉`);
-            loadAdminUsers();
+            alert(`User verification successfully updated! 🎉`);
+            loadAdminUsers(); // Table reload karne ke liye
         } else {
             alert("Error: " + data.error);
         }
     } catch (e) {
-        alert("Verification update failed.");
+        console.error("Verification connection error:", e);
+        alert("Verification update failed on network layer.");
     }
 }
 

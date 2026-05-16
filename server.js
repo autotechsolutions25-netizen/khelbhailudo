@@ -1029,7 +1029,7 @@ app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
 });
 
 
-// 1. Get All Users with CORRECT columns for Admin Panel
+
 // Get All Users with Absolute Image URLs for GitHub Pages Compatibility
 app.get('/api/admin/users', async (req, res) => {
     try {

@@ -958,6 +958,55 @@ app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
 });
 
 
+// 1. Get All Users with KYC details for Admin Panel
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        // Is query mein hum ensure kar rahe hain ki aadhar_front, aadhar_back aur kyc_status saare fields milein
+        const result = await pool.query(`
+            SELECT id, username, mobile, balance, 
+                   COALESCE(kyc_status, 'pending') as kyc_status, 
+                   aadhar_front, aadhar_back, created_at 
+            FROM users 
+            ORDER BY id DESC
+        `);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error("Admin Users Fetch Error:", err.message);
+        res.status(500).json({ success: false, error: "Database error while fetching users" });
+    }
+});
+
+// 2. Route to Update KYC Status (Approve/Reject)
+app.post('/api/admin/user/update-kyc', async (req, res) => {
+    const { userId, status } = req.body; // status can be 'approved' or 'rejected'
+    if (!userId || !status) {
+        return res.status(400).json({ success: false, error: "Missing parameters" });
+    }
+    try {
+        await pool.query("UPDATE users SET kyc_status = $1 WHERE id = $2", [status, userId]);
+        res.status(200).json({ success: true, message: `User KYC status updated to ${status}` });
+    } catch (err) {
+        console.error("KYC Update Error:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 3. Route to Delete a User Request / Account completely
+app.delete('/api/admin/user/delete/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query("DELETE FROM users WHERE id = $1 RETURNING *", [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "User nahi mila!" });
+        }
+        res.status(200).json({ success: true, message: "User requested account deleted successfully!" });
+    } catch (err) {
+        console.error("User Delete Error:", err.message);
+        res.status(500).json({ success: false, error: "Failed to delete user structure" });
+    }
+});
+
+
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {

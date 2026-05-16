@@ -495,12 +495,12 @@ async function loadAdminUsers() {
 
         body.innerHTML = users.map(user => {
             // Absolute Strict Boolean Check: Handles true, 'TRUE', 'true', 1, or numeric values safely
-            const isVerified = (
-                user.is_verified === true || 
-                user.is_verified === 'true' || 
-                user.is_verified === 'TRUE' || 
-                parseInt(user.is_verified) === 1
-            );
+const isVerified = (
+    user.is_verified === true || 
+    user.is_verified === 'true' || 
+    user.is_verified === 'TRUE' || 
+    parseInt(user.is_verified) === 1
+);
             
             const statusText = isVerified ? 'VERIFIED' : 'PENDING APPROVAL';
             const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';

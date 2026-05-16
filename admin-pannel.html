@@ -517,51 +517,51 @@ async function loadAdminUsers() {
             return;
         }
 
-// loadAdminUsers ke map loop ke andar ye badlao karein:
-body.innerHTML = users.map(user => {
-    // Check purely on boolean is_verified column
-    const isVerified = user.is_verified === true || user.is_verified === 'true';
-    
-    const statusText = isVerified ? 'VERIFIED' : 'UNVERIFIED';
-    const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';
+        body.innerHTML = users.map(user => {
+            // Strongest boolean extraction logic (Handles true, "true", 1, or checked)
+            const isVerified = (user.is_verified === true || user.is_verified === 'true' || parseInt(user.is_verified) === 1);
+            
+            const statusText = isVerified ? 'VERIFIED' : 'UNVERIFIED';
+            const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';
 
-    const frontImg = user.aadhar_front_url || '';
-    const backImg = user.aadhar_back_url || '';
-    const hasDocs = frontImg !== '' && !frontImg.includes('undefined');
+            const frontImg = user.aadhar_front_url || '';
+            const backImg = user.aadhar_back_url || '';
+            const hasDocs = frontImg !== '' && !frontImg.includes('undefined') && !frontImg.includes('null');
 
-    return `
-        <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding:12px 15px; font-weight:600; color:#64748b;">#${user.id}</td>
-            <td style="padding:12px 15px; font-weight:bold; color:#1e293b;">${user.username || 'Unknown'}</td>
-            <td style="padding:12px 15px; color:#334155;">${user.mobile_no || '--'}</td>
-            <td style="padding:12px 15px; font-weight:600; color:#059669;">₹${user.wallet_balance || 0}</td>
-            <td style="padding:12px 15px;">
-                <span style="font-size:11px; font-weight:bold; padding:4px 8px; border-radius:12px; ${statusStyle}">
-                    ${statusText}
-                </span>
-            </td>
-            <td style="padding:12px 15px;">
-                <button class="btn" style="padding:5px 10px; font-size:12px; background:${hasDocs ? '#00d2ff' : '#cbd5e1'}; color:${hasDocs ? '#fff' : '#64748b'}; border:none; border-radius:4px;" 
-                        onclick="openDocModal(${user.id}, '${frontImg}', '${backImg}', '${statusText}')">
-                    <i class="fas fa-eye"></i> ${hasDocs ? 'View Docs' : 'No Docs'}
-                </button>
-            </td>
-            <td style="padding:12px 15px; text-align:center; display:flex; gap:8px; justify-content:center;">
-                ${!isVerified ? `
-                <button class="btn btn-success" style="padding:5px 10px; font-size:11px;" onclick="updateKycStatus(${user.id}, 'approved')">
-                    <i class="fas fa-check"></i> Approve
-                </button>` : `
-                <button class="btn btn-warning" style="padding:5px 10px; font-size:11px; background:#f59e0b; color:#fff; border:none; border-radius:4px;" onclick="updateKycStatus(${user.id}, 'reject')">
-                    <i class="fas fa-times"></i> Unverify
-                </button>
-                `}
-                <button class="btn btn-danger" style="padding:5px 10px; font-size:11px;" onclick="deleteUserRequest(${user.id})">
-                    <i class="fas fa-trash-alt"></i> Delete
-                </button>
-            </td>
-        </tr>
-    `;
-}).join('');
+            return `
+                <tr style="border-bottom: 1px solid #e2e8f0; background: ${isVerified ? '#f8fafc' : '#ffffff'};">
+                    <td style="padding:12px 15px; font-weight:600; color:#64748b;">#${user.id}</td>
+                    <td style="padding:12px 15px; font-weight:bold; color:#1e293b;">${user.username || 'Unknown'}</td>
+                    <td style="padding:12px 15px; color:#334155;">${user.mobile_no || '--'}</td>
+                    <td style="padding:12px 15px; font-weight:600; color:#059669;">₹${user.wallet_balance || 0}</td>
+                    <td style="padding:12px 15px;">
+                        <span style="font-size:11px; font-weight:bold; padding:4px 8px; border-radius:12px; ${statusStyle}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td style="padding:12px 15px;">
+                        <button class="btn" style="padding:5px 10px; font-size:12px; background:${hasDocs ? '#00d2ff' : '#cbd5e1'}; color:${hasDocs ? '#fff' : '#64748b'}; border:none; border-radius:4px; cursor:pointer;" 
+                                onclick="openDocModal(${user.id}, '${frontImg}', '${backImg}', '${statusText}')">
+                            <i class="fas fa-eye"></i> ${hasDocs ? 'View Docs' : 'No Docs'}
+                        </button>
+                    </td>
+                    <td style="padding:12px 15px; text-align:center; display:flex; gap:8px; justify-content:center; align-items:center;">
+                        ${!isVerified ? `
+                            <button class="btn btn-success" style="padding:6px 12px; font-size:11px; background:#22c55e; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="updateKycStatus(${user.id}, 'approve')">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                        ` : `
+                            <button class="btn" style="padding:6px 12px; font-size:11px; background:#f59e0b; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="updateKycStatus(${user.id}, 'reject')">
+                                <i class="fas fa-times"></i> Unverify
+                            </button>
+                        `}
+                        <button class="btn btn-danger" style="padding:6px 12px; font-size:11px; background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="deleteUserRequest(${user.id})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
     } catch (err) {
         console.error("Render table view error:", err);

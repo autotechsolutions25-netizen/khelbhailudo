@@ -69,13 +69,18 @@
         <p class="no-data">Loading referrals...</p>
     </div>
 
-   <script>
+  <script>
     const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
-    const userId = localStorage.getItem('userId');
+    
+    // Safety Fallback Layer: Typecast raw storage string into an absolute integer
+    const rawUserId = localStorage.getItem('userId');
+    const userId = (rawUserId && !isNaN(rawUserId)) ? parseInt(rawUserId) : null;
 
     window.onload = () => {
-        console.log("Stored User ID on page load:", userId);
-        if(!userId || userId === "undefined") { 
+        console.log("Stored User ID on page load (Raw):", rawUserId);
+        console.log("Parsed User ID for API:", userId);
+        
+        if(!userId) { 
             alert("Session expired! Please login again.");
             window.location.href = "index.html"; 
             return; 
@@ -85,12 +90,21 @@
 
     async function fetchReferralHistory() {
         const listDiv = document.getElementById('referList');
+        if (!listDiv) return;
+
         try {
-            console.log(`Sending API Request to: ${API_BASE}/user/referrals/${userId}`);
+            console.log(`Sending explicit API Request to: ${API_BASE}/user/referrals/${userId}`);
             
-            const res = await fetch(`${API_BASE}/user/referrals/${userId}`);
+            // Explicitly pass parsed absolute integer to verify parameters matching
+            const res = await fetch(`${API_BASE}/user/referrals/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
             
-            console.log("HTTP Response Status:", res.status);
+            console.log("HTTP Response Status received:", res.status);
             
             if (!res.ok) {
                 const errText = await res.text();
@@ -98,14 +112,15 @@
             }
 
             const data = await res.json();
-            console.log("Raw Data Received from Server:", data);
+            console.log("Raw Data Received from Server Array:", data);
 
-            if(!data || data.length === 0) {
+            // Interface handling layer for empty datasets or array check parameters
+            if(!data || !Array.isArray(data) || data.length === 0) {
                 listDiv.innerHTML = `
                     <div class="no-data">
                         <i class="fas fa-users fa-3x"></i>
                         <p>No referrals found in database for your ID.</p>
-                        <small style="color:#64748b; display:block; margin-top:5px;">(Database check passed, but count is 0)</small>
+                        <small style="color:#64748b; display:block; margin-top:5px;">Connected to profile ID: ${userId} (Records: 0)</small>
                     </div>`;
                 document.getElementById('totalReferEarn').innerText = "₹0";
                 document.getElementById('totalFriends').innerText = "0";
@@ -116,8 +131,9 @@
             let friendsCount = data.length;
 
             listDiv.innerHTML = data.map(r => {
-                const currentStatus = r.kyc_status ? r.kyc_status.toString().toLowerCase() : 'pending';
-                const isApproved = (currentStatus === 'approved');
+                // Highly flexible parsing to prevent errors if status returns boolean, null, or variations
+                const currentStatus = r.kyc_status ? r.kyc_status.toString().trim().toLowerCase() : 'pending';
+                const isApproved = (currentStatus === 'approved' || r.is_verified === true);
                 
                 if(isApproved) totalEarned += 10;
                 const joinDate = r.created_at ? new Date(r.created_at).toLocaleDateString() : '--/--/----';

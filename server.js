@@ -154,12 +154,12 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        // D. Database Insertion executing targeted dynamic values mapping
+        // FIXED: Insertion status set to 'pending_login' so signup users don't pollute the KYC pending tab
         await pool.query(
             `INSERT INTO users (
                 full_name, email, mobile_no, username, password, 
-                aadhar_front_url, aadhar_back_url, kyc_status, referred_by
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8)`,
+                aadhar_front_url, aadhar_back_url, is_verified, kyc_status, referred_by
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, 'pending_login', $8)`,
             [fullName, email, mobile, username, password, aadharFrontUrl, aadharBackUrl, parsedReferBy]
         );
         
@@ -792,11 +792,17 @@ app.post('/api/admin/battles/verify-winner', async (req, res) => {
 
 app.get('/api/admin/pending-users', async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM users WHERE kyc_status = 'pending' ORDER BY created_at DESC");
+        // FIXED: Only pulls records where kyc_status is strictly 'pending'
+        const result = await pool.query(
+            "SELECT * FROM users WHERE kyc_status = 'pending' ORDER BY id DESC"
+        );
         res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
+// 3. Approve User Function (Kept intact with existing update query format)
 app.post('/api/admin/approve-user', async (req, res) => {
     const { userId } = req.body;
     try {
@@ -805,6 +811,7 @@ app.post('/api/admin/approve-user', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 4. Admin Users List View (Ensured is_verified selection is explicitly active)
 app.get('/api/admin/users/list', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, full_name, username, mobile_no, wallet_balance, is_verified FROM users ORDER BY id DESC');

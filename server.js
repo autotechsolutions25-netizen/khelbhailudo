@@ -67,35 +67,77 @@ const upload = multer({
 // ROUTES
 
 
-// 1. User Registration (Strict Database Link Binding)
+// 1. Supabase Storage Client Initialization (Ensure aapke paas @supabase/supabase-js installed ho)
+// Agar pehle se initialized hai toh double import mat karna
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+// 2. Robust Registration Route with Live Supabase Storage Integration
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
-        console.log("--- Supabase Debug Request Body ---", req.body);
-        console.log("--- Supabase Debug Files ---", req.files);
-
         const { fullName, email, mobile, username, password, referred_by } = req.body;
         
-        // Strict verification: Check karein agar req.files completely missing hai
+        // Strict File Verification
         if (!req.files || !req.files['aadharFront'] || !req.files['aadharBack']) {
             return res.status(400).json({ 
                 success: false, 
-                error: "Backend Error: Aadhaar card images server tak nahi pahunchi! Kripya form aur frontend boundary check karein." 
+                error: "Front aur Back dono Aadhaar images select karna zaroori hai!" 
             });
         }
 
-        // Agar files hain, toh filename extract karein
         const frontFile = req.files['aadharFront'][0];
         const backFile = req.files['aadharBack'][0];
 
-        // Sahi path string format banayein jo Supabase mein store hoga
-        const frontUrl = `/uploads/${frontFile.filename}`;
-        const backUrl = `/uploads/${backFile.filename}`;
+        // Unique filenames generate karein taaki overwrite na ho
+        const timestamp = Date.now();
+        const frontName = `${timestamp}_front_${frontFile.originalname.replace(/\s+/g, '_')}`;
+        const backName = `${timestamp}_back_${backFile.originalname.replace(/\s+/g, '_')}`;
 
-        console.log("Supabase me ye string jaa rhi hai -> Front:", frontUrl, " | Back:", backUrl);
+        // Node fs module se file buffers read karein
+        const fs = require('fs');
+        const frontBuffer = fs.readFileSync(frontFile.path);
+        const backBuffer = fs.readFileSync(backFile.path);
+
+        // A. Upload Front Image to 'aadhar' Bucket
+        const { data: frontUpload, error: frontErr } = await supabase.storage
+            .from('aadhar')
+            .upload(frontName, frontBuffer, {
+                contentType: frontFile.mimetype,
+                upsert: true
+            });
+
+        if (frontErr) throw new Error("Front Image Upload Failed: " + frontErr.message);
+
+        // B. Upload Back Image to 'aadhar' Bucket
+        const { data: backUpload, error: backErr } = await supabase.storage
+            .from('aadhar')
+            .upload(backName, backBuffer, {
+                contentType: backFile.mimetype,
+                upsert: true
+            });
+
+        if (backErr) throw new Error("Back Image Upload Failed: " + backErr.message);
+
+        // C. Get Public URLs from Supabase Storage
+        const { data: frontUrlData } = supabase.storage.from('aadhar').getPublicUrl(frontName);
+        const { data: backUrlData } = supabase.storage.from('aadhar').getPublicUrl(backName);
+
+        const aadharFrontUrl = frontUrlData.publicUrl;
+        const aadharBackUrl = backUrlData.publicUrl;
+
+        console.log("Supabase Storage Public URLs Generated successfully:");
+        console.log("Front URL:", aadharFrontUrl);
+        console.log("Back URL:", aadharBackUrl);
+
+        // Clean local temporary files from Render server disk space
+        try {
+            fs.unlinkSync(frontFile.path);
+            fs.unlinkSync(backFile.path);
+        } catch (e) { console.log("Temp file cleanup skipped"); }
 
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        // Final query execution
+        // D. Insert Public URLs directly into database table rows
         await pool.query(
             `INSERT INTO users (
                 full_name, 
@@ -108,14 +150,14 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
                 is_verified,
                 referred_by
              ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8)`,
-            [fullName, email, mobile, username, password, frontUrl, backUrl, parsedReferBy]
+            [fullName, email, mobile, username, password, aadharFrontUrl, aadharBackUrl, parsedReferBy]
         );
         
-        return res.status(200).json({ success: true, message: "Data successfully written to Supabase!" });
+        return res.status(200).json({ success: true, message: "Registration & cloud upload successful!" });
 
     } catch (err) {
-        console.error("Supabase Write Error Log:", err.message);
-        return res.status(500).json({ success: false, error: "Database Crash: " + err.message });
+        console.error("Critical Cloud Sync Error:", err.message);
+        return res.status(500).json({ success: false, error: "Server Error: " + err.message });
     }
 });
 

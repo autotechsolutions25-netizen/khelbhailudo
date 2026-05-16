@@ -586,19 +586,30 @@ function openDocModal(userId, frontSrc, backSrc, currentStatus) {
     const backImg = document.getElementById('modalAadharBack');
     const actions = document.getElementById('modalActionContainer');
 
-    // Supabase public links are absolute URLs, so use them directly
-    function getValidUrl(src) {
-        if (!src || src === 'undefined' || src === 'null' || src.trim() === '' || src.includes('undefined')) {
+    // Strict regex fallback match filter rule to eliminate corrupted string payloads
+    function verifyCloudUrl(src) {
+        if (!src || typeof src !== 'string') return null;
+        const cleanStr = src.trim().toLowerCase();
+        
+        // Block all corrupt variations
+        if (cleanStr === '' || 
+            cleanStr === 'null' || 
+            cleanStr === 'undefined' || 
+            cleanStr.includes('undefined') || 
+            cleanStr.includes('/uploads/null')) {
             return null;
         }
         return src.trim();
     }
 
-    const finalFrontUrl = getValidUrl(frontSrc);
-    const finalBackUrl = getValidUrl(backSrc);
+    const finalFrontUrl = verifyCloudUrl(frontSrc);
+    const finalBackUrl = verifyCloudUrl(backSrc);
 
-    frontImg.src = finalFrontUrl ? finalFrontUrl : 'https://placehold.co/250x150?text=No+Front+Side+Uploaded';
-    backImg.src = finalBackUrl ? finalBackUrl : 'https://placehold.co/250x150?text=No+Back+Side+Uploaded';
+    console.log("Admin Panel Live Target Front Source:", finalFrontUrl);
+    console.log("Admin Panel Live Target Back Source:", finalBackUrl);
+
+    frontImg.src = finalFrontUrl ? finalFrontUrl : 'https://placehold.co/250x150?text=Aadhar+Front+Missing';
+    backImg.src = finalBackUrl ? finalBackUrl : 'https://placehold.co/250x150?text=Aadhar+Back+Missing';
 
     frontImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
     backImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };

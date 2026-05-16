@@ -573,13 +573,42 @@ function openDocModal(userId, frontSrc, backSrc, currentStatus) {
     const backImg = document.getElementById('modalAadharBack');
     const actions = document.getElementById('modalActionContainer');
 
-    // Safe fallbacks to prevent undefined or 404 image crashes
-    frontImg.src = (frontSrc && frontSrc !== 'undefined' && frontSrc !== '') ? frontSrc : 'https://placehold.co/250x150?text=Aadhar+Front+Side+Not+Found';
-    backImg.src = (backSrc && backSrc !== 'undefined' && backSrc !== '') ? backSrc : 'https://placehold.co/250x150?text=Aadhar+Back+Side+Not+Found';
+    const BACKEND_SERVER = "https://khel-bhai-luso-backend-service.onrender.com";
 
-    // Clear and clean error checks for handling dynamic images breaking on live rendering
-    frontImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
-    backImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
+    // Safe formatter function for dynamic image path validation
+    function formatImageUrl(src) {
+        if (!src || src === 'undefined' || src === 'null' || src.trim() === '') {
+            return null;
+        }
+        src = src.trim();
+        // Agar link relative path hai (/uploads/...) toh server address jodie
+        if (src.startsWith('/uploads')) {
+            return `${BACKEND_SERVER}${src}`;
+        }
+        // Agar link keval file ka naam hai (image.png) toh complete standard path banayein
+        if (!src.startsWith('http://') && !src.startsWith('https://')) {
+            return `${BACKEND_SERVER}/uploads/${src}`;
+        }
+        return src; // Already full URL present
+    }
+
+    const finalFrontUrl = formatImageUrl(frontSrc);
+    const finalBackUrl = formatImageUrl(backSrc);
+
+    console.log("Loading Front Image Full URL:", finalFrontUrl);
+    console.log("Loading Back Image Full URL:", finalBackUrl);
+
+    // Apply formatted source or structural placeholders fallback
+    frontImg.src = finalFrontUrl ? finalFrontUrl : 'https://placehold.co/250x150?text=Front+Side+Not+Uploaded';
+    backImg.src = finalBackUrl ? finalBackUrl : 'https://placehold.co/250x150?text=Back+Side+Not+Uploaded';
+
+    // Anti-crash layer if image file is deleted from server or path breaks runtime
+    frontImg.onerror = function() { 
+        this.src = 'https://placehold.co/250x150?text=Aadhar+Front+Load+Failed'; 
+    };
+    backImg.onerror = function() { 
+        this.src = 'https://placehold.co/250x150?text=Aadhar+Back+Load+Failed'; 
+    };
 
     actions.innerHTML = `
         <button class="btn btn-danger" style="padding:8px 15px; font-weight:bold; cursor:pointer;" onclick="updateKycStatus(${userId}, 'rejected').then(closeDocModal)">Reject KYC</button>

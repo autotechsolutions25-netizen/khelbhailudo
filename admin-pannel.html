@@ -519,13 +519,12 @@ async function loadAdminUsers() {
         }
 
         body.innerHTML = users.map(user => {
-            // Strict parsing check for boolean response patterns
+            // Strict Boolean Evaluation
             const isVerified = (user.is_verified === true || user.is_verified === 'true' || parseInt(user.is_verified) === 1);
             
-            const statusText = isVerified ? 'ACTIVE / LOGIN ALLOWED' : 'PENDING APPROVAL';
+            const statusText = isVerified ? 'VERIFIED' : 'PENDING APPROVAL';
             const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';
 
-            // Document existence validation
             const frontImg = user.aadhar_front_url || '';
             const backImg = user.aadhar_back_url || '';
             const hasDocs = frontImg !== '' && !frontImg.includes('undefined') && !frontImg.includes('null');
@@ -553,7 +552,7 @@ async function loadAdminUsers() {
                                 <i class="fas fa-check"></i> Approve
                             </button>
                         ` : `
-                            <span style="color:#15803d; font-size:12px; font-weight:bold; margin-right:5px;"><i class="fas fa-user-check"></i> Allowed</span>
+                            <span style="color:#15803d; font-size:11px; font-weight:bold; padding:6px 12px; background:rgba(34,197,94,0.1); border-radius:6px;"><i class="fas fa-user-check"></i> Verified Account</span>
                         `}
                         <button class="btn btn-danger" style="padding:6px 12px; font-size:11px; background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="deleteUserRequest(${user.id})">
                             <i class="fas fa-trash-alt"></i> Delete
@@ -564,8 +563,8 @@ async function loadAdminUsers() {
         }).join('');
 
     } catch (err) {
-        console.error("Admin user directory build crash:", err);
-        body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:red;">Sync execution timeout.</td></tr>';
+        console.error(err);
+        body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:red;">Data load failed.</td></tr>';
     }
 }
         

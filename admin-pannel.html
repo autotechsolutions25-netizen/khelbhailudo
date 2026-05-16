@@ -64,6 +64,7 @@
         <div class="nav-item" id="nav-battles" onclick="showSection('battles')"><i class="fas fa-gamepad"></i> Verify Results</div>
         <div class="nav-item" id="nav-kyc" onclick="showSection('kyc')"><i class="fas fa-id-card"></i> KYC Approvals</div>
         <div class="nav-item" id="nav-withdrawals" onclick="showSection('withdrawals')"><i class="fas fa-university"></i> Withdrawals</div>
+        <div class="nav-item" id="nav-notifications" onclick="showSection('notifications')"><i class="fas fa-bell"></i> Push Notification</div>
         <div class="nav-item" id="nav-users" onclick="showSection('users')"><i class="fas fa-users"></i> All Users</div>
         <div class="nav-item nav-logout" onclick="adminLogout()"><i class="fas fa-sign-out-alt"></i> Logout</div>
     </div>
@@ -127,6 +128,25 @@
             </div>
         </div>
 
+
+        <div id="section-notifications" class="content-card" style="display:none;">
+    <h3>Push New Notification to Users</h3>
+    <div style="max-width: 500px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div style="margin-bottom: 15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px;">Notification Title</label>
+            <input type="text" id="notifTitle" placeholder="E.g., Mega Tournament Alert! 🏆" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px;">Message Text</label>
+            <textarea id="notifMessage" rows="4" placeholder="Apna message yahan likhein..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-family:inherit;"></textarea>
+        </div>
+        <button class="btn btn-success" onclick="sendNotification()" style="width: 100%; padding: 12px; font-size: 14px;">
+            <i class="fas fa-paper-plane"></i> Broadcast Notification
+        </button>
+    </div>
+</div>
+        
+
         <div id="section-users" class="content-card" style="display:none;">
             <h3>User Directory</h3>
             <div class="table-responsive">
@@ -163,6 +183,7 @@
             if(id === 'withdrawals') loadPendingWithdrawals();
             if(id === 'battles') loadBattles();
             if(id === 'stats') updateStats();
+            if(id === 'notifications') loadAdminNotifications();
         }
 
         async function loadBattles() {
@@ -344,6 +365,31 @@
                 body.innerHTML = data.map(u => `<tr><td>#${u.id}</td><td>${u.username}</td><td>${u.mobile_no}</td><td>₹${u.wallet_balance}</td><td>${u.kyc_status}</td></tr>`).join('');
             } catch(e) {}
         }
+
+        async function sendNotification() {
+    const title = document.getElementById('notifTitle').value.trim();
+    const message = document.getElementById('notifMessage').value.trim();
+
+    if(!title || !message) return alert("Kripya Title aur Message dono bharein!");
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/notifications/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, message })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("Notification sabhi users ko bhej diya gaya hai! 🎉");
+            document.getElementById('notifTitle').value = '';
+            document.getElementById('notifMessage').value = '';
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (e) {
+        alert("Server error, try again.");
+    }
+}
 
         function adminLogout() { localStorage.removeItem('admin_logged_in'); window.location.href = "index.html"; }
 

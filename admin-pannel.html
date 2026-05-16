@@ -504,7 +504,7 @@ async function deleteNotification(id) {
 
 
 
-// 1. Load All Registered Users (Approve Button removes on True status)
+// 1. Load All Registered Users (With View Docs Button Restored)
 async function loadAdminUsers() {
     const body = document.getElementById('adminUserTableBody');
     if (!body) return;
@@ -514,7 +514,7 @@ async function loadAdminUsers() {
         const users = await res.json();
 
         if (!users || !Array.isArray(users) || users.length === 0) {
-            body.innerHTML = '<tr><td colspan="6" align="center" style="padding:20px; color:#64748b;">No registered users found.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:#64748b;">No registered users found.</td></tr>';
             return;
         }
 
@@ -524,6 +524,11 @@ async function loadAdminUsers() {
             
             const statusText = isVerified ? 'ACTIVE / LOGIN ALLOWED' : 'PENDING APPROVAL';
             const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';
+
+            // Document existence validation
+            const frontImg = user.aadhar_front_url || '';
+            const backImg = user.aadhar_back_url || '';
+            const hasDocs = frontImg !== '' && !frontImg.includes('undefined') && !frontImg.includes('null');
 
             return `
                 <tr style="border-bottom: 1px solid #e2e8f0; background: ${isVerified ? '#f8fafc' : '#ffffff'};">
@@ -535,6 +540,12 @@ async function loadAdminUsers() {
                         <span style="font-size:11px; font-weight:bold; padding:4px 8px; border-radius:12px; ${statusStyle}">
                             ${statusText}
                         </span>
+                    </td>
+                    <td style="padding:12px 15px;">
+                        <button class="btn" style="padding:5px 10px; font-size:12px; background:${hasDocs ? '#00d2ff' : '#cbd5e1'}; color:${hasDocs ? '#fff' : '#64748b'}; border:none; border-radius:4px; cursor:pointer;" 
+                                onclick="openDocModal(${user.id}, '${frontImg}', '${backImg}', '${statusText}')">
+                            <i class="fas fa-eye"></i> ${hasDocs ? 'View Docs' : 'No Docs'}
+                        </button>
                     </td>
                     <td style="padding:12px 15px; text-align:center; display:flex; gap:8px; justify-content:center; align-items:center;">
                         ${!isVerified ? `
@@ -554,9 +565,10 @@ async function loadAdminUsers() {
 
     } catch (err) {
         console.error("Admin user directory build crash:", err);
-        body.innerHTML = '<tr><td colspan="6" align="center" style="padding:20px; color:red;">Sync execution timeout.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:red;">Sync execution timeout.</td></tr>';
     }
 }
+        
 
 // 2. Click handler execution to change boolean flags
 async function executeUserVerification(userId, actionParam) {

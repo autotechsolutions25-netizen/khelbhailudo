@@ -512,29 +512,29 @@ async function loadAdminUsers() {
         const res = await fetch(`${API_BASE}/admin/users`);
         const users = await res.json();
 
-        if (!users || users.length === 0) {
-            body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px;">No registered users found.</td></tr>';
+        // Safety Layer: Agar backend error de aur array na bhejey
+        if (!users || !Array.isArray(users) || users.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:#64748b;">No users found or server error.</td></tr>';
             return;
         }
 
         body.innerHTML = users.map(user => {
-            // Fix undefined checks dynamically
             const status = user.kyc_status ? user.kyc_status.toString().toUpperCase() : 'PENDING';
-            let statusStyle = 'background:#fef3c7; color:#d97706;'; // Pending default
+            let statusStyle = 'background:#fef3c7; color:#d97706;'; 
             if(status === 'APPROVED' || status === 'VERIFIED') statusStyle = 'background:#dcfce7; color:#15803d;';
             if(status === 'REJECTED') statusStyle = 'background:#fee2e2; color:#b91c1c;';
 
-            // Document Image Check values
-            const frontImg = user.aadhar_front || '';
-            const backImg = user.aadhar_back || '';
+            // Corrected properties to match database columns
+            const frontImg = user.aadhar_front_url || '';
+            const backImg = user.aadhar_back_url || '';
             const hasDocs = frontImg !== '' || backImg !== '';
 
             return `
-                <tr style="border-bottom: 1px solid #e2e8f0; hover:background:#f8fafc;">
+                <tr style="border-bottom: 1px solid #e2e8f0;">
                     <td style="padding:12px 15px; font-weight:600; color:#64748b;">#${user.id}</td>
                     <td style="padding:12px 15px; font-weight:bold; color:#1e293b;">${user.username || 'Unknown'}</td>
-                    <td style="padding:12px 15px; color:#334155;">${user.mobile || '--'}</td>
-                    <td style="padding:12px 15px; font-weight:600; color:#059669;">₹${user.balance || 0}</td>
+                    <td style="padding:12px 15px; color:#334155;">${user.mobile_no || '--'}</td>
+                    <td style="padding:12px 15px; font-weight:600; color:#059669;">₹${user.wallet_balance || 0}</td>
                     <td style="padding:12px 15px;">
                         <span style="font-size:11px; font-weight:bold; padding:4px 8px; border-radius:12px; ${statusStyle}">
                             ${status}
@@ -561,7 +561,7 @@ async function loadAdminUsers() {
 
     } catch (err) {
         console.error("Render table view error:", err);
-        body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:red;">Failed to sync with user records layer.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:red;">Connection error. Failed to load users.</td></tr>';
     }
 }
 

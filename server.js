@@ -67,38 +67,43 @@ const upload = multer({
 // ROUTES
 
 
-// 1. Supabase Storage Client Initialization (Ensure aapke paas @supabase/supabase-js installed ho)
+
 // Agar pehle se initialized hai toh double import mat karna
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 // 2. Robust Registration Route with Live Supabase Storage Integration
+// 1. User Registration (Anti-Undefined Strict Cloud Stream Flow)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
+        console.log("--- Supabase Storage Input Processing Layer ---");
         const { fullName, email, mobile, username, password, referred_by } = req.body;
         
-        // Strict File Verification
+        // Anti-Crash Layer: Check if files object exists properly
         if (!req.files || !req.files['aadharFront'] || !req.files['aadharBack']) {
             return res.status(400).json({ 
                 success: false, 
-                error: "Front aur Back dono Aadhaar images select karna zaroori hai!" 
+                error: "Frontend Upload Error: Aadhaar Card images server tak nahi pahunchi. Please re-select files." 
             });
         }
 
         const frontFile = req.files['aadharFront'][0];
         const backFile = req.files['aadharBack'][0];
 
-        // Unique filenames generate karein taaki overwrite na ho
-        const timestamp = Date.now();
-        const frontName = `${timestamp}_front_${frontFile.originalname.replace(/\s+/g, '_')}`;
-        const backName = `${timestamp}_back_${backFile.originalname.replace(/\s+/g, '_')}`;
+        // Ensure file paths are valid strings and not undefined tokens
+        if (!frontFile.filename || !backFile.filename) {
+            return res.status(400).json({ success: false, error: "Runtime Error: Uploaded filename is undefined." });
+        }
 
-        // Node fs module se file buffers read karein
+        const timestamp = Date.now();
+        const frontName = `${timestamp}_front_${frontFile.filename}`;
+        const backName = `${timestamp}_back_${backFile.filename}`;
+
         const fs = require('fs');
         const frontBuffer = fs.readFileSync(frontFile.path);
         const backBuffer = fs.readFileSync(backFile.path);
 
-        // A. Upload Front Image to 'aadhar' Bucket
+        // A. Upload Front Document with unique pointer token mapping
         const { data: frontUpload, error: frontErr } = await supabase.storage
             .from('aadhar')
             .upload(frontName, frontBuffer, {
@@ -106,9 +111,9 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
                 upsert: true
             });
 
-        if (frontErr) throw new Error("Front Image Upload Failed: " + frontErr.message);
+        if (frontErr) throw new Error("Supabase Front Bucket Rejection: " + frontErr.message);
 
-        // B. Upload Back Image to 'aadhar' Bucket
+        // B. Upload Back Document with unique pointer token mapping
         const { data: backUpload, error: backErr } = await supabase.storage
             .from('aadhar')
             .upload(backName, backBuffer, {
@@ -116,48 +121,42 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
                 upsert: true
             });
 
-        if (backErr) throw new Error("Back Image Upload Failed: " + backErr.message);
+        if (backErr) throw new Error("Supabase Back Bucket Rejection: " + backErr.message);
 
-        // C. Get Public URLs from Supabase Storage
+        // C. Fetch Public Links directly from cloud storage cdn parameters
         const { data: frontUrlData } = supabase.storage.from('aadhar').getPublicUrl(frontName);
         const { data: backUrlData } = supabase.storage.from('aadhar').getPublicUrl(backName);
 
         const aadharFrontUrl = frontUrlData.publicUrl;
         const aadharBackUrl = backUrlData.publicUrl;
 
-        console.log("Supabase Storage Public URLs Generated successfully:");
-        console.log("Front URL:", aadharFrontUrl);
-        console.log("Back URL:", aadharBackUrl);
+        // Double check validation to clean up strings from containing 'undefined' strings
+        if (aadharFrontUrl.includes('undefined') || aadharBackUrl.includes('undefined')) {
+            throw new Error("Cloud Storage Sync Error: Public URL generated invalid parameters.");
+        }
 
-        // Clean local temporary files from Render server disk space
+        // Clean temporary disk system storage paths automatically
         try {
             fs.unlinkSync(frontFile.path);
             fs.unlinkSync(backFile.path);
-        } catch (e) { console.log("Temp file cleanup skipped"); }
+        } catch (e) { console.log("Temporary server space disk sweep bypassed."); }
 
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        // D. Insert Public URLs directly into database table rows
+        // D. Final SQL injection execution tracking absolute strings values
         await pool.query(
             `INSERT INTO users (
-                full_name, 
-                email, 
-                mobile_no, 
-                username, 
-                password, 
-                aadhar_front_url, 
-                aadhar_back_url, 
-                is_verified,
-                referred_by
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8)`,
+                full_name, email, mobile_no, username, password, 
+                aadhar_front_url, aadhar_back_url, kyc_status, referred_by
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8)`,
             [fullName, email, mobile, username, password, aadharFrontUrl, aadharBackUrl, parsedReferBy]
         );
         
-        return res.status(200).json({ success: true, message: "Registration & cloud upload successful!" });
+        return res.status(200).json({ success: true, message: "Cloud registration successful!" });
 
     } catch (err) {
-        console.error("Critical Cloud Sync Error:", err.message);
-        return res.status(500).json({ success: false, error: "Server Error: " + err.message });
+        console.error("Critical Cloud Transaction Aborted:", err.message);
+        return res.status(500).json({ success: false, error: err.message });
     }
 });
 

@@ -940,6 +940,24 @@ app.get('/api/notifications', async (req, res) => {
 });
 
 
+// Admin se Notification Delete karne ka Route
+app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query("DELETE FROM notifications WHERE id = $1 RETURNING *", [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "Notification nahi mila!" });
+        }
+        
+        res.json({ success: true, message: "Notification deleted successfully!" });
+    } catch (err) {
+        console.error("Notification Delete Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {

@@ -66,24 +66,41 @@ const upload = multer({
 
 // ROUTES
 
-// 1. User Registration
+// 1. User Registration (Updated with Referral System Logic)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
-        const { fullName, email, mobile, username, password } = req.body;
+        // req.body se referred_by ko bhi destructure kar rahe hain
+        const { fullName, email, mobile, username, password, referred_by } = req.body;
+        
         const front = req.files['aadharFront'] ? `/uploads/${req.files['aadharFront'][0].filename}` : null;
         const back = req.files['aadharBack'] ? `/uploads/${req.files['aadharBack'][0].filename}` : null;
 
+        // Validation: Check karein agar referred_by ek valid number hai, nahi toh null set karein
+        const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
+
+        // Query mein referred_by column aur $8 parameter add kiya hai
         await pool.query(
-            `INSERT INTO users (full_name, email, mobile_no, username, password, aadhar_front_url, aadhar_back_url, is_verified) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
-            [fullName, email, mobile, username, password, front, back]
+            `INSERT INTO users (
+                full_name, 
+                email, 
+                mobile_no, 
+                username, 
+                password, 
+                aadhar_front_url, 
+                aadhar_back_url, 
+                is_verified,
+                referred_by
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8)`,
+            [fullName, email, mobile, username, password, front, back, parsedReferBy]
         );
+        
         res.json({ success: true });
     } catch (err) {
         console.error("Reg Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
+
 
 // 2. SEND OTP via FAST2SMS (Existing Code - Don't Delete)
 app.post('/api/send-otp', async (req, res) => {

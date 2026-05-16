@@ -1067,36 +1067,36 @@ app.get('/api/admin/users', async (req, res) => {
     }
 });
 
-// 2. Route to Update KYC Status & Verification (Approve/Reject Fix)
-app.post('/api/admin/user/update-kyc', async (req, res) => {
-    const { userId, status } = req.body; // status can be 'approved' or 'rejected'
+
+// 2. Route to Update KYC Status & Verification (Approve/Reject Fix)// 2. Updated: Route to Direct User Verification (is_verified = true/false)
+app.post('/api/admin/user/verify', async (req, res) => {
+    const { userId, action } = req.body; // action can be 'approve' or 'reject'
     
-    if (!userId || !status) {
-        return res.status(400).json({ success: false, error: "Missing parameters" });
+    if (!userId || !action) {
+        return res.status(400).json({ success: false, error: "Missing parameters: userId aur action zaroori hain!" });
     }
     
     try {
-        // Agar status 'approved' hai, toh is_verified ko true karenge, nahi toh false
-        const isVerifiedBool = (status.toLowerCase() === 'approved');
+        // Agar action 'approve' hai toh true, nahi toh false
+        const verifyStatus = (action.toLowerCase() === 'approve');
 
-        console.log(`Updating User ID ${userId}: kyc_status = ${status}, is_verified = ${isVerifiedBool}`);
+        console.log(`Setting Verification for User ID ${userId} to: ${verifyStatus}`);
 
-        // Donon columns ko ek saath update karne ki query
+        // Sirf is_verified column ko update karne ki direct query
         await pool.query(
             `UPDATE users 
-             SET kyc_status = $1, 
-                 is_verified = $2 
-             WHERE id = $3`, 
-            [status.toLowerCase(), isVerifiedBool, userId]
+             SET is_verified = $1 
+             WHERE id = $2`, 
+            [verifyStatus, userId]
         );
 
         res.status(200).json({ 
             success: true, 
-            message: `User KYC status updated to ${status} and is_verified set to ${isVerifiedBool}` 
+            message: `User verification successfully set to ${verifyStatus}` 
         });
     } catch (err) {
-        console.error("KYC Update Error:", err.message);
-        res.status(500).json({ success: false, error: "Database update failed: " + err.message });
+        console.error("User Verification Error:", err.message);
+        res.status(500).json({ success: false, error: "Database verification failed: " + err.message });
     }
 });
 

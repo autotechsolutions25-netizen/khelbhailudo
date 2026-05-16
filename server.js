@@ -959,9 +959,9 @@ app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
 
 
 // 1. Get All Users with CORRECT columns for Admin Panel
+// Get All Users with Absolute Image URLs for GitHub Pages Compatibility
 app.get('/api/admin/users', async (req, res) => {
     try {
-        // Aapke tables ke sahi columns: mobile_no, wallet_balance, aadhar_front_url, aadhar_back_url
         const result = await pool.query(`
             SELECT id, username, mobile_no, wallet_balance, 
                    COALESCE(kyc_status, 'pending') as kyc_status, 
@@ -969,12 +969,29 @@ app.get('/api/admin/users', async (req, res) => {
             FROM users 
             ORDER BY id DESC
         `);
+
+        // Render Server URL config mapping
+        const SERVER_URL = "https://khel-bhai-luso-backend-service.onrender.com";
+
+        // Har row ke image path ko filter karke absolute URL mein convert karein
+        const formattedUsers = result.rows.map(user => {
+            let front = user.aadhar_front_url ? user.aadhar_front_url.trim() : '';
+            let back = user.aadhar_back_url ? user.aadhar_back_url.trim() : '';
+
+            // Agar path dynamic backend upload se hai (/uploads/...) toh full URL jodien
+            if (front && front.startsWith('/uploads')) front = `${SERVER_URL}${front}`;
+            if (back && back.startsWith('/uploads')) back = `${SERVER_URL}${back}`;
+
+            return {
+                ...user,
+                aadhar_front_url: front,
+                aadhar_back_url: back
+            };
+        });
         
-        // Explicit check taaki array hi jaye
-        res.status(200).json(result.rows);
+        res.status(200).json(formattedUsers);
     } catch (err) {
         console.error("Admin Users Fetch Error:", err.message);
-        // Agar crash ho toh frontend ko empty array bhejien taaki .map() crash na ho
         res.status(500).json([]); 
     }
 });

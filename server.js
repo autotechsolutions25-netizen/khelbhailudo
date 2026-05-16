@@ -876,36 +876,36 @@ app.post('/api/admin/withdrawals/reject', async (req, res) => {
 
 
 // --- NEW: Fetch User Referral History ---
+// --- 1. Fetch User Referral History ---
 app.get('/api/user/referrals/:userId', async (req, res) => {
     const { userId } = req.params;
     
-    // Safety check for ID
-    if (!userId || userId === 'undefined' || isNaN(userId)) {
-        console.log("Invalid User ID received in Referrals:", userId);
-        return res.status(400).json({ error: "Invalid User ID" });
+    // Fallback parsing checks
+    const targetId = parseInt(userId);
+    if (!targetId || isNaN(targetId)) {
+        console.error("Critical: Invalid or missing userId passed to referrals:", userId);
+        return res.status(400).json({ success: false, error: "Invalid User ID parameter" });
     }
 
     try {
-        console.log(`Fetching referrals for User ID: ${userId}`);
-
-        // Query check: users table se details nikalna
+        console.log(`Executing safe query for referred_by ID: ${targetId}`);
+        
+        // Ensure standard clean SQL parameters
         const result = await pool.query(`
             SELECT id, username, kyc_status, created_at 
             FROM users 
             WHERE referred_by = $1 
             ORDER BY created_at DESC`, 
-            [parseInt(userId)]
+            [targetId]
         );
         
-        console.log("Database response rows count:", result.rows.length);
-        console.log("Data sent to frontend:", result.rows);
-
-        // CORS safety: Response explicitly headers ke saath bhejte hain
-        res.setHeader('Content-Type', 'application/json');
-        res.json(result.rows);
+        console.log(`Query successful. Found ${result.rows.length} referral rows.`);
+        
+        // Send safe headers manually to prevent gateway blockages
+        res.status(200).json(result.rows);
     } catch (err) {
-        console.error("Referral Fetch Error in Backend:", err.message);
-        res.status(500).json({ error: "Server error while fetching referrals", details: err.message });
+        console.error("Render Query Crash Error:", err.message);
+        res.status(500).json({ success: false, error: "Database transaction failed", details: err.message });
     }
 });
 

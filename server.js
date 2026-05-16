@@ -1067,18 +1067,36 @@ app.get('/api/admin/users', async (req, res) => {
     }
 });
 
-// 2. Route to Update KYC Status (Approve/Reject)
+// 2. Route to Update KYC Status & Verification (Approve/Reject Fix)
 app.post('/api/admin/user/update-kyc', async (req, res) => {
     const { userId, status } = req.body; // status can be 'approved' or 'rejected'
+    
     if (!userId || !status) {
         return res.status(400).json({ success: false, error: "Missing parameters" });
     }
+    
     try {
-        await pool.query("UPDATE users SET kyc_status = $1 WHERE id = $2", [status, userId]);
-        res.status(200).json({ success: true, message: `User KYC status updated to ${status}` });
+        // Agar status 'approved' hai, toh is_verified ko true karenge, nahi toh false
+        const isVerifiedBool = (status.toLowerCase() === 'approved');
+
+        console.log(`Updating User ID ${userId}: kyc_status = ${status}, is_verified = ${isVerifiedBool}`);
+
+        // Donon columns ko ek saath update karne ki query
+        await pool.query(
+            `UPDATE users 
+             SET kyc_status = $1, 
+                 is_verified = $2 
+             WHERE id = $3`, 
+            [status.toLowerCase(), isVerifiedBool, userId]
+        );
+
+        res.status(200).json({ 
+            success: true, 
+            message: `User KYC status updated to ${status} and is_verified set to ${isVerifiedBool}` 
+        });
     } catch (err) {
         console.error("KYC Update Error:", err.message);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: "Database update failed: " + err.message });
     }
 });
 

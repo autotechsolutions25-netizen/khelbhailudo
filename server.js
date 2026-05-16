@@ -958,21 +958,24 @@ app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
 });
 
 
-// 1. Get All Users with KYC details for Admin Panel
+// 1. Get All Users with CORRECT columns for Admin Panel
 app.get('/api/admin/users', async (req, res) => {
     try {
-        // Is query mein hum ensure kar rahe hain ki aadhar_front, aadhar_back aur kyc_status saare fields milein
+        // Aapke tables ke sahi columns: mobile_no, wallet_balance, aadhar_front_url, aadhar_back_url
         const result = await pool.query(`
-            SELECT id, username, mobile, balance, 
+            SELECT id, username, mobile_no, wallet_balance, 
                    COALESCE(kyc_status, 'pending') as kyc_status, 
-                   aadhar_front, aadhar_back, created_at 
+                   aadhar_front_url, aadhar_back_url, created_at 
             FROM users 
             ORDER BY id DESC
         `);
+        
+        // Explicit check taaki array hi jaye
         res.status(200).json(result.rows);
     } catch (err) {
         console.error("Admin Users Fetch Error:", err.message);
-        res.status(500).json({ success: false, error: "Database error while fetching users" });
+        // Agar crash ho toh frontend ko empty array bhejien taaki .map() crash na ho
+        res.status(500).json([]); 
     }
 });
 

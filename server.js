@@ -68,18 +68,19 @@ const upload = multer({
 
 
 
-// Agar pehle se initialized hai toh double import mat karna
+// --- File ke ekdum top par rakhna in imports ko ---
 const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs'); // Top-level import for optimized resource pool
+
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-// 2. Robust Registration Route with Live Supabase Storage Integration
-// 1. User Registration (Anti-Undefined Strict Cloud Stream Flow)
+// 1. User Registration (Anti-Undefined Strict Cloud Stream Flow - Fully Fixed)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
         console.log("--- Supabase Storage Input Processing Layer ---");
         const { fullName, email, mobile, username, password, referred_by } = req.body;
         
-        // Anti-Crash Layer: Check if files object exists properly
+        // Anti-Crash Layer: Ensure file buffers exist properly
         if (!req.files || !req.files['aadharFront'] || !req.files['aadharBack']) {
             return res.status(400).json({ 
                 success: false, 
@@ -90,60 +91,76 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
         const frontFile = req.files['aadharFront'][0];
         const backFile = req.files['aadharBack'][0];
 
-        // Ensure file paths are valid strings and not undefined tokens
-        if (!frontFile.filename || !backFile.filename) {
-            return res.status(400).json({ success: false, error: "Runtime Error: Uploaded filename is undefined." });
+        // Safe Filename Extraction Fallback (diskStorage aur memoryStorage dono ke liye pass hoga)
+        const frontOriginalName = frontFile.filename || frontFile.originalname || `front_${Date.now()}`;
+        const backOriginalName = backFile.filename || backFile.originalname || `back_${Date.now()}`;
+
+        if (!frontOriginalName || !backOriginalName || frontOriginalName.includes('undefined')) {
+            return res.status(400).json({ success: false, error: "Runtime Error: Uploaded filename token parsing mismatch." });
         }
 
         const timestamp = Date.now();
-        const frontName = `${timestamp}_front_${frontFile.filename}`;
-        const backName = `${timestamp}_back_${backFile.filename}`;
+        const frontName = `${timestamp}_front_${frontOriginalName.replace(/\s+/g, '_')}`;
+        const backName = `${timestamp}_back_${backFile.filename || backFile.originalname ? (backFile.filename || backFile.originalname).replace(/\s+/g, '_') : Date.now()}`;
 
-        const fs = require('fs');
-        const frontBuffer = fs.readFileSync(frontFile.path);
-        const backBuffer = fs.readFileSync(backFile.path);
+        // Buffers dynamically allocate karein memory structure safe rakhne ke liye
+        let frontBuffer, backBuffer;
+        if (frontFile.path) {
+            frontBuffer = fs.readFileSync(frontFile.path);
+            backBuffer = fs.readFileSync(backFile.path);
+        } else if (frontFile.buffer) {
+            frontBuffer = frontFile.buffer;
+            backBuffer = backFile.buffer;
+        } else {
+            throw new Error("File structure binary data unreadable.");
+        }
 
-        // A. Upload Front Document with unique pointer token mapping
+        // A. Upload Front Document with strict content types mapping
         const { data: frontUpload, error: frontErr } = await supabase.storage
             .from('aadhar')
             .upload(frontName, frontBuffer, {
-                contentType: frontFile.mimetype,
+                contentType: frontFile.mimetype || 'image/jpeg',
                 upsert: true
             });
 
         if (frontErr) throw new Error("Supabase Front Bucket Rejection: " + frontErr.message);
 
-        // B. Upload Back Document with unique pointer token mapping
+        // B. Upload Back Document with strict content types mapping
         const { data: backUpload, error: backErr } = await supabase.storage
             .from('aadhar')
             .upload(backName, backBuffer, {
-                contentType: backFile.mimetype,
+                contentType: backFile.mimetype || 'image/jpeg',
                 upsert: true
             });
 
         if (backErr) throw new Error("Supabase Back Bucket Rejection: " + backErr.message);
 
-        // C. Fetch Public Links directly from cloud storage cdn parameters
+        // C. Fetch Public Links tracking explicit public path schema
         const { data: frontUrlData } = supabase.storage.from('aadhar').getPublicUrl(frontName);
         const { data: backUrlData } = supabase.storage.from('aadhar').getPublicUrl(backName);
 
-        const aadharFrontUrl = frontUrlData.publicUrl;
-        const aadharBackUrl = backUrlData.publicUrl;
+        const aadharFrontUrl = frontUrlData ? frontUrlData.publicUrl : null;
+        const aadharBackUrl = backUrlData ? backUrlData.publicUrl : null;
 
-        // Double check validation to clean up strings from containing 'undefined' strings
-        if (aadharFrontUrl.includes('undefined') || aadharBackUrl.includes('undefined')) {
+        // Ultimate validation block to catch malformed endpoints before writing to database
+        if (!aadharFrontUrl || !aadharBackUrl || aadharFrontUrl.includes('undefined') || aadharBackUrl.includes('undefined')) {
             throw new Error("Cloud Storage Sync Error: Public URL generated invalid parameters.");
         }
 
-        // Clean temporary disk system storage paths automatically
-        try {
-            fs.unlinkSync(frontFile.path);
-            fs.unlinkSync(backFile.path);
-        } catch (e) { console.log("Temporary server space disk sweep bypassed."); }
+        // Clean temporary local files safely if disk storage strategy is active
+        if (frontFile.path) {
+            try {
+                fs.unlinkSync(frontFile.path);
+                fs.unlinkSync(backFile.path);
+                console.log("Temporary server space disk sweep completed.");
+            } catch (e) { 
+                console.log("Temporary file clear cycle skipped or file already removed."); 
+            }
+        }
 
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        // D. Final SQL injection execution tracking absolute strings values
+        // D. Database Insertion executing targeted dynamic values mapping
         await pool.query(
             `INSERT INTO users (
                 full_name, email, mobile_no, username, password, 
@@ -152,11 +169,12 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
             [fullName, email, mobile, username, password, aadharFrontUrl, aadharBackUrl, parsedReferBy]
         );
         
+        console.log(`Successfully registered user: ${username} with Supabase secure storage references.`);
         return res.status(200).json({ success: true, message: "Cloud registration successful!" });
 
     } catch (err) {
         console.error("Critical Cloud Transaction Aborted:", err.message);
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(500).json({ success: false, error: "Server Registration Failure: " + err.message });
     }
 });
 

@@ -565,19 +565,25 @@ async function loadAdminUsers() {
     }
 }
 
-// 2. Open pop-up window for images inspection
+        
+// Modals popup view logic update
 function openDocModal(userId, frontSrc, backSrc, currentStatus) {
     const modal = document.getElementById('documentModal');
     const frontImg = document.getElementById('modalAadharFront');
     const backImg = document.getElementById('modalAadharBack');
     const actions = document.getElementById('modalActionContainer');
 
-    frontImg.src = frontSrc ? frontSrc : 'https://placehold.co/200x120?text=No+Front+Image';
-    backImg.src = backSrc ? backSrc : 'https://placehold.co/200x120?text=No+Back+Image';
+    // Safe fallbacks to prevent undefined or 404 image crashes
+    frontImg.src = (frontSrc && frontSrc !== 'undefined' && frontSrc !== '') ? frontSrc : 'https://placehold.co/250x150?text=Aadhar+Front+Side+Not+Found';
+    backImg.src = (backSrc && backSrc !== 'undefined' && backSrc !== '') ? backSrc : 'https://placehold.co/250x150?text=Aadhar+Back+Side+Not+Found';
+
+    // Clear and clean error checks for handling dynamic images breaking on live rendering
+    frontImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
+    backImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
 
     actions.innerHTML = `
-        <button class="btn btn-danger" style="padding:8px 15px;" onclick="updateKycStatus(${userId}, 'rejected').then(closeDocModal)">Reject KYC</button>
-        <button class="btn btn-success" style="padding:8px 15px;" onclick="updateKycStatus(${userId}, 'approved').then(closeDocModal)">Approve KYC</button>
+        <button class="btn btn-danger" style="padding:8px 15px; font-weight:bold; cursor:pointer;" onclick="updateKycStatus(${userId}, 'rejected').then(closeDocModal)">Reject KYC</button>
+        <button class="btn btn-success" style="padding:8px 15px; font-weight:bold; cursor:pointer;" onclick="updateKycStatus(${userId}, 'approved').then(closeDocModal)">Approve KYC</button>
     `;
     modal.style.display = 'flex';
 }

@@ -69,72 +69,87 @@
         <p class="no-data">Loading referrals...</p>
     </div>
 
-    <script>
-        const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
-        const userId = localStorage.getItem('userId');
+   <script>
+    const API_BASE = "https://khel-bhai-luso-backend-service.onrender.com/api";
+    const userId = localStorage.getItem('userId');
 
-        window.onload = () => {
-            if(!userId || userId === "undefined") { window.location.href = "index.html"; return; }
-            fetchReferralHistory();
-        };
-
-        async function fetchReferralHistory() {
-            const listDiv = document.getElementById('referList');
-            try {
-                const res = await fetch(`${API_BASE}/user/referrals/${userId}`);
-                
-                // Safety Layer: Check if response is 404 or not okay
-                if (!res.ok) {
-                    listDiv.innerHTML = '<div class="no-data"><p>Service unavailable or API route missing.</p></div>';
-                    return;
-                }
-
-                const data = await res.json();
-
-                if(!data || data.length === 0) {
-                    listDiv.innerHTML = '<div class="no-data"><i class="fas fa-users fa-3x"></i><p>Abhi tak koi refer nahi mila.</p></div>';
-                    document.getElementById('totalReferEarn').innerText = "₹0";
-                    document.getElementById('totalFriends').innerText = "0";
-                    return;
-                }
-
-                let totalEarned = 0;
-                let friendsCount = data.length;
-
-                listDiv.innerHTML = data.map(r => {
-                    // Safe Check: string check fallback layer to prevent script crashes
-                    const currentStatus = r.kyc_status ? r.kyc_status.toString().toLowerCase() : 'pending';
-                    const isApproved = (currentStatus === 'approved');
-                    
-                    if(isApproved) totalEarned += 10;
-
-                    // Date parsing standard handler
-                    const joinDate = r.created_at ? new Date(r.created_at).toLocaleDateString() : '--/--/----';
-
-                    return `
-                        <div class="refer-card">
-                            <div class="user-info">
-                                <b>${r.username || 'Unknown User'}</b>
-                                <small>Joined: ${joinDate}</small>
-                            </div>
-                            <div class="reward-info">
-                                <span class="reward-amt">${isApproved ? '+ ₹10' : '₹0'}</span>
-                                <span class="status-tag ${isApproved ? 'st-success' : 'st-pending'}">
-                                    ${isApproved ? 'VERIFIED' : 'PENDING KYC'}
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                document.getElementById('totalReferEarn').innerText = "₹" + totalEarned;
-                document.getElementById('totalFriends').innerText = friendsCount;
-
-            } catch (err) {
-                console.error("Frontend Data Render Error:", err);
-                listDiv.innerHTML = '<div class="no-data" style="color:red;"><p>Error loading refer data. Try again later.</p></div>';
-            }
+    window.onload = () => {
+        console.log("Stored User ID on page load:", userId);
+        if(!userId || userId === "undefined") { 
+            alert("Session expired! Please login again.");
+            window.location.href = "index.html"; 
+            return; 
         }
-    </script>
+        fetchReferralHistory();
+    };
+
+    async function fetchReferralHistory() {
+        const listDiv = document.getElementById('referList');
+        try {
+            console.log(`Sending API Request to: ${API_BASE}/user/referrals/${userId}`);
+            
+            const res = await fetch(`${API_BASE}/user/referrals/${userId}`);
+            
+            console.log("HTTP Response Status:", res.status);
+            
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Server responded with status ${res.status}. Details: ${errText}`);
+            }
+
+            const data = await res.json();
+            console.log("Raw Data Received from Server:", data);
+
+            if(!data || data.length === 0) {
+                listDiv.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-users fa-3x"></i>
+                        <p>No referrals found in database for your ID.</p>
+                        <small style="color:#64748b; display:block; margin-top:5px;">(Database check passed, but count is 0)</small>
+                    </div>`;
+                document.getElementById('totalReferEarn').innerText = "₹0";
+                document.getElementById('totalFriends').innerText = "0";
+                return;
+            }
+
+            let totalEarned = 0;
+            let friendsCount = data.length;
+
+            listDiv.innerHTML = data.map(r => {
+                const currentStatus = r.kyc_status ? r.kyc_status.toString().toLowerCase() : 'pending';
+                const isApproved = (currentStatus === 'approved');
+                
+                if(isApproved) totalEarned += 10;
+                const joinDate = r.created_at ? new Date(r.created_at).toLocaleDateString() : '--/--/----';
+
+                return `
+                    <div class="refer-card">
+                        <div class="user-info">
+                            <b>${r.username || 'Unknown User'}</b>
+                            <small>Joined: ${joinDate}</small>
+                        </div>
+                        <div class="reward-info">
+                            <span class="reward-amt">${isApproved ? '+ ₹10' : '₹0'}</span>
+                            <span class="status-tag ${isApproved ? 'st-success' : 'st-pending'}">
+                                ${isApproved ? 'VERIFIED' : 'PENDING KYC'}
+                            </span>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            document.getElementById('totalReferEarn').innerText = "₹" + totalEarned;
+            document.getElementById('totalFriends').innerText = friendsCount;
+
+        } catch (err) {
+            console.error("Frontend Critical Fetch Error:", err);
+            listDiv.innerHTML = `
+                <div class="no-data" style="color:red;">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    <p>Failed to load data.</p>
+                    <small style="color: #ef4444; word-break: break-all;">Error: ${err.message}</small>
+                </div>`;
+        }
+    }
+</script>
 </body>
 </html>

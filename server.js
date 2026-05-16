@@ -1029,6 +1029,99 @@ app.delete('/api/admin/notifications/delete/:id', async (req, res) => {
 });
 
 
+// Get All Users with Absolute Image URLs for GitHub Pages Compatibility
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, username, mobile_no, wallet_balance, 
+                   COALESCE(kyc_status, 'pending') as kyc_status, 
+                   aadhar_front_url, aadhar_back_url, created_at 
+            FROM users 
+            ORDER BY id DESC
+        `);
+
+        // Render Server URL config mapping
+        const SERVER_URL = "https://khel-bhai-luso-backend-service.onrender.com";
+
+        // Har row ke image path ko filter karke absolute URL mein convert karein
+        const formattedUsers = result.rows.map(user => {
+            let front = user.aadhar_front_url ? user.aadhar_front_url.trim() : '';
+            let back = user.aadhar_back_url ? user.aadhar_back_url.trim() : '';
+
+            // Agar path dynamic backend upload se hai (/uploads/...) toh full URL jodien
+            if (front && front.startsWith('/uploads')) front = `${SERVER_URL}${front}`;
+            if (back && back.startsWith('/uploads')) back = `${SERVER_URL}${back}`;
+
+            return {
+                ...user,
+                aadhar_front_url: front,
+                aadhar_back_url: back
+            };
+        });
+        
+        res.status(200).json(formattedUsers);
+    } catch (err) {
+        console.error("Admin Users Fetch Error:", err.message);
+        res.status(500).json([]); 
+    }
+});
+
+
+
+// ADMIN USER VERIFICATION - Only triggers Login Activation (Removes confusion with KYC)
+app.post('/api/admin/user/verify', async (req, res) => {
+    const { userId, action } = req.body; 
+    
+    if (!userId || !action) {
+        return res.status(400).json({ success: false, error: "Missing fields: userId aur action zaroori hain!" });
+    }
+    
+    try {
+        const verifyStatus = (action.toLowerCase() === 'approve');
+        const targetUserId = parseInt(userId);
+
+        console.log(`Setting verification flag in database: User #${targetUserId} -> is_verified = ${verifyStatus}`);
+
+        // Only updates the boolean login flag column, leaves aadhar/kyc columns untouched
+        const result = await pool.query(
+            `UPDATE users 
+             SET is_verified = $1 
+             WHERE id = $2
+             RETURNING id, is_verified`, 
+            [verifyStatus, targetUserId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "User record not found in system." });
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            message: `User login access updated to ${verifyStatus}`,
+            user: result.rows[0]
+        });
+    } catch (err) {
+        console.error("Critical Verification Error:", err.message);
+        return res.status(500).json({ success: false, error: "Database state transition failed." });
+    }
+});
+
+
+// 3. Route to Delete a User Request / Account completely
+app.delete('/api/admin/user/delete/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query("DELETE FROM users WHERE id = $1 RETURNING *", [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: "User nahi mila!" });
+        }
+        res.status(200).json({ success: true, message: "User requested account deleted successfully!" });
+    } catch (err) {
+        console.error("User Delete Error:", err.message);
+        res.status(500).json({ success: false, error: "Failed to delete user structure" });
+    }
+});
+
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {

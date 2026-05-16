@@ -586,34 +586,26 @@ function openDocModal(userId, frontSrc, backSrc, currentStatus) {
     const backImg = document.getElementById('modalAadharBack');
     const actions = document.getElementById('modalActionContainer');
 
-    const BACKEND_SERVER = "https://khel-bhai-luso-backend-service.onrender.com";
-
-    function cleanUrl(src) {
-        if (!src || src === 'undefined' || src === 'null' || src.trim() === '' || src.includes('undefined') || src.includes('null')) {
+    // Supabase public links are absolute URLs, so use them directly
+    function getValidUrl(src) {
+        if (!src || src === 'undefined' || src === 'null' || src.trim() === '' || src.includes('undefined')) {
             return null;
         }
-        src = src.trim();
-        if (src.startsWith('/uploads')) {
-            return `${BACKEND_SERVER}${src}`;
-        }
-        return src;
+        return src.trim();
     }
 
-    const finalFrontUrl = cleanUrl(frontSrc);
-    const finalBackUrl = cleanUrl(backSrc);
+    const finalFrontUrl = getValidUrl(frontSrc);
+    const finalBackUrl = getValidUrl(backSrc);
 
-    console.log("Loading Front Image Full URL:", finalFrontUrl);
-    console.log("Loading Back Image Full URL:", finalBackUrl);
-
-    frontImg.src = finalFrontUrl ? finalFrontUrl : 'https://placehold.co/250x150?text=Aadhar+Front+Not+Uploaded';
-    backImg.src = finalBackUrl ? finalBackUrl : 'https://placehold.co/250x150?text=Aadhar+Back+Not+Uploaded';
+    frontImg.src = finalFrontUrl ? finalFrontUrl : 'https://placehold.co/250x150?text=No+Front+Side+Uploaded';
+    backImg.src = finalBackUrl ? finalBackUrl : 'https://placehold.co/250x150?text=No+Back+Side+Uploaded';
 
     frontImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
     backImg.onerror = function() { this.src = 'https://placehold.co/250x150?text=Image+Load+Failed'; };
 
     actions.innerHTML = `
-        <button class="btn btn-danger" style="padding:8px 15px; font-weight:bold; cursor:pointer;" onclick="updateKycStatus(${userId}, 'rejected').then(closeDocModal)">Reject KYC</button>
-        <button class="btn btn-success" style="padding:8px 15px; font-weight:bold; cursor:pointer;" onclick="updateKycStatus(${userId}, 'approved').then(closeDocModal)">Approve KYC</button>
+        <button class="btn btn-danger" style="padding:8px 15px;" onclick="updateKycStatus(${userId}, 'rejected').then(closeDocModal)">Reject KYC</button>
+        <button class="btn btn-success" style="padding:8px 15px;" onclick="updateKycStatus(${userId}, 'approved').then(closeDocModal)">Approve KYC</button>
     `;
     modal.style.display = 'flex';
 }

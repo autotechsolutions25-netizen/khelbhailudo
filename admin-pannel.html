@@ -503,7 +503,8 @@ async function deleteNotification(id) {
 }
 
 
-        // 1. Fetch and Display Users cleanly without undefined status
+
+// 1. Load All Registered Users (Approve Button removes on True status)
 async function loadAdminUsers() {
     const body = document.getElementById('adminUserTableBody');
     if (!body) return;
@@ -513,20 +514,16 @@ async function loadAdminUsers() {
         const users = await res.json();
 
         if (!users || !Array.isArray(users) || users.length === 0) {
-            body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:#64748b;">No users found or server error.</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" align="center" style="padding:20px; color:#64748b;">No registered users found.</td></tr>';
             return;
         }
 
         body.innerHTML = users.map(user => {
-            // Strongest boolean extraction logic (Handles true, "true", 1, or checked)
+            // Strict parsing check for boolean response patterns
             const isVerified = (user.is_verified === true || user.is_verified === 'true' || parseInt(user.is_verified) === 1);
             
-            const statusText = isVerified ? 'VERIFIED' : 'UNVERIFIED';
+            const statusText = isVerified ? 'ACTIVE / LOGIN ALLOWED' : 'PENDING APPROVAL';
             const statusStyle = isVerified ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;';
-
-            const frontImg = user.aadhar_front_url || '';
-            const backImg = user.aadhar_back_url || '';
-            const hasDocs = frontImg !== '' && !frontImg.includes('undefined') && !frontImg.includes('null');
 
             return `
                 <tr style="border-bottom: 1px solid #e2e8f0; background: ${isVerified ? '#f8fafc' : '#ffffff'};">
@@ -539,21 +536,13 @@ async function loadAdminUsers() {
                             ${statusText}
                         </span>
                     </td>
-                    <td style="padding:12px 15px;">
-                        <button class="btn" style="padding:5px 10px; font-size:12px; background:${hasDocs ? '#00d2ff' : '#cbd5e1'}; color:${hasDocs ? '#fff' : '#64748b'}; border:none; border-radius:4px; cursor:pointer;" 
-                                onclick="openDocModal(${user.id}, '${frontImg}', '${backImg}', '${statusText}')">
-                            <i class="fas fa-eye"></i> ${hasDocs ? 'View Docs' : 'No Docs'}
-                        </button>
-                    </td>
                     <td style="padding:12px 15px; text-align:center; display:flex; gap:8px; justify-content:center; align-items:center;">
                         ${!isVerified ? `
-                            <button class="btn btn-success" style="padding:6px 12px; font-size:11px; background:#22c55e; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="updateKycStatus(${user.id}, 'approve')">
+                            <button class="btn btn-success" style="padding:6px 12px; font-size:11px; background:#22c55e; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="executeUserVerification(${user.id}, 'approve')">
                                 <i class="fas fa-check"></i> Approve
                             </button>
                         ` : `
-                            <button class="btn" style="padding:6px 12px; font-size:11px; background:#f59e0b; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="updateKycStatus(${user.id}, 'reject')">
-                                <i class="fas fa-times"></i> Unverify
-                            </button>
+                            <span style="color:#15803d; font-size:12px; font-weight:bold; margin-right:5px;"><i class="fas fa-user-check"></i> Allowed</span>
                         `}
                         <button class="btn btn-danger" style="padding:6px 12px; font-size:11px; background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="deleteUserRequest(${user.id})">
                             <i class="fas fa-trash-alt"></i> Delete
@@ -564,8 +553,28 @@ async function loadAdminUsers() {
         }).join('');
 
     } catch (err) {
-        console.error("Render table view error:", err);
-        body.innerHTML = '<tr><td colspan="7" align="center" style="padding:20px; color:red;">Connection error. Failed to load users.</td></tr>';
+        console.error("Admin user directory build crash:", err);
+        body.innerHTML = '<tr><td colspan="6" align="center" style="padding:20px; color:red;">Sync execution timeout.</td></tr>';
+    }
+}
+
+// 2. Click handler execution to change boolean flags
+async function executeUserVerification(userId, actionParam) {
+    try {
+        const res = await fetch(`${API_BASE}/admin/user/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId, action: actionParam })
+        });
+        const data = await res.json();
+        if(data.success) {
+            // Re-render user logs array immediately to drop the approve button from view bounds
+            loadAdminUsers(); 
+        } else {
+            alert("Verification operation rejected: " + data.error);
+        }
+    } catch (e) {
+        alert("Server validation layer connection timeout.");
     }
 }
 

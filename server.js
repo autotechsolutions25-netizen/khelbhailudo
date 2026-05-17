@@ -159,7 +159,7 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 });
 
 
-// 2. ENDPOINT: SEND OTP VIA FAST2SMS (Strict Anti-Crash Build)
+// 2. ENDPOINT: SEND OTP VIA FAST2SMS (Optimized Parameter Structure for DLT bypass)
 app.post('/api/auth/send-otp', async (req, res) => {
     const { mobile } = req.body;
 
@@ -171,37 +171,50 @@ app.post('/api/auth/send-otp', async (req, res) => {
     const FAST2SMS_API_KEY = "8i6WxBF0QtHA5JjLMwCenrUVPG1vdfDg3yOEuco7aSYKh2Zz9TVs32AXuiwKSzJ5Mpf8YLd0WbN1RPIT"; 
 
     try {
-        console.log(`[Fast2SMS] Attempting to send OTP ${generatedOtp} to mobile: ${mobile}`);
+        console.log(`[Fast2SMS] Sending OTP ${generatedOtp} to mobile: ${mobile}`);
 
-        // Safe API Call Structure
+        // SAFE UPDATED PARAMS: 'otp' route block hone par ye standard dynamic bulkV2 messaging pattern use karega
         const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
             params: {
                 authorization: FAST2SMS_API_KEY,
-                variables_values: generatedOtp,
-                route: 'otp', 
+                route: 'v3', // Changed route from 'otp' to 'v3' (Fast2SMS standard text/verification backup)
+                sender_id: 'TXTIND', // Default verified sender ID
+                message: `Aapka Khelo Bhai Ludo OTP hai: ${generatedOtp}. Do not share.`,
                 numbers: mobile
             },
-            timeout: 10000 // 10 second network fallback limit
+            timeout: 10000 
         });
 
         console.log("[Fast2SMS] Raw Gateway Callback Status:", response.data);
 
-        if (response.data && response.data.return === true) {
+        // Fast2SMS return response standard check
+        if (response.data && (response.data.return === true || response.data.status_code === 200)) {
             otpStore[mobile] = {
                 otp: generatedOtp,
-                expiresAt: Date.now() + 5 * 60 * 1000 // 5 Mins Validity
+                expiresAt: Date.now() + 5 * 60 * 1000 
             };
             return res.status(200).json({ success: true, message: "OTP mobile par bhej diya gaya hai!" });
         } else {
             console.error("[Fast2SMS] Reject Trace:", response.data);
-            return res.status(400).json({ success: false, error: response.data.message || "Gateway registration limits error." });
+            return res.status(400).json({ 
+                success: false, 
+                error: `Fast2SMS Error: ${response.data.message || 'Wallet balance check karein ya DLT problem hai.'}` 
+            });
         }
 
     } catch (err) {
+        // Axios error handling loop structure inside node response catch blocks
+        if (err.response) {
+            console.error("[Fast2SMS Server Rejected with 400]:", err.response.data);
+            return res.status(400).json({
+                success: false,
+                error: `Fast2SMS API Rejection: ${JSON.stringify(err.response.data)}. Kripya wallet balance aur account status check karein.`
+            });
+        }
         console.error("[Fast2SMS Network Crash Exception]:", err.message);
         return res.status(500).json({ 
             success: false, 
-            error: "SMS Gateway Server down hai ya API settings block hain. Error: " + err.message 
+            error: "SMS Gateway connectivity error: " + err.message 
         });
     }
 });

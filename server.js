@@ -16,20 +16,14 @@ app.use('/uploads', express.static('uploads'));
 // Ensure uploads folder exists
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 
-// Database Connection
+// Database Connection (Supabase initialization internally handled inside db.js)
 const pool = require('./db');
 
-// --- SUPABASE CLIENT CRASH GUARD ---
-// Check karein agar supabase tumhare db.js ya upar imported hai, agar nahi toh initialization safety block:
-const { createClient: makeSupabaseClient } = require('@supabase/supabase-js');
+// FIXED: Agar db.js ke andar 'supabase' exported hai toh thik hai, nahi toh collision se bachne ke liye standard check laga diya hai
+// Agar aapke 'db.js' se client export hota hai toh ye line use automatic use karegi bina re-declaration error ke.
+const supabaseClientInstance = pool.supabase || global.supabase;
 
-const supabaseUrl = process.env.SUPABASE_URL || "https://your-supabase-url.supabase.co"; // actual string bhi daal sakte ho agar env me dikkat ho
-const supabaseKey = process.env.SUPABASE_KEY || "YOUR_SUPABASE_KEY";
-
-// Agar code me niche 'supabase' variable use ho raha hai, toh usi ko assign karenge bina re-declaration error ke
-const supabase = makeSupabaseClient(supabaseUrl, supabaseKey);
-
-// CORS Multi-Origin configuration layer
+// CORS Multi-Origin configuration layer (Cleaned up for khelbhailudo.com)
 const allowedOrigins = [
     'https://autotechsolutions25-netizen.github.io',
     'https://khelbhailudo.com',
@@ -93,7 +87,7 @@ const upload = multer({
 
 // --- ROUTES ---
 
-// 1. User Registration (Strict Cloud Stream Flow)
+// 1. User Registration (Strict Cloud Stream Flow - Target mapping optimized)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
         console.log("--- Supabase Storage Input Processing Layer ---");
@@ -119,22 +113,29 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
         let frontBuffer = frontFile.buffer;
         let backBuffer = backFile.buffer;
 
+        // Use core runtime fallback if client object is globally declared or isolated inside pool
+        const targetStorageClient = typeof supabase !== 'undefined' ? supabase : supabaseClientInstance;
+
+        if(!targetStorageClient || !targetStorageClient.storage) {
+            throw new Error("Supabase client module initialization failed internally or hidden inside db.js layer.");
+        }
+
         // Upload Front Document
-        const { data: frontUpload, error: frontErr } = await supabase.storage
+        const { data: frontUpload, error: frontErr } = await targetStorageClient.storage
             .from('aadhar')
             .upload(frontName, frontBuffer, { contentType: frontFile.mimetype || 'image/jpeg', upsert: true });
 
         if (frontErr) throw new Error("Supabase Front Bucket Rejection: " + frontErr.message);
 
         // Upload Back Document
-        const { data: backUpload, error: backErr } = await supabase.storage
+        const { data: backUpload, error: backErr } = await targetStorageClient.storage
             .from('aadhar')
             .upload(backName, backBuffer, { contentType: backFile.mimetype || 'image/jpeg', upsert: true });
 
         if (backErr) throw new Error("Supabase Back Bucket Rejection: " + backErr.message);
 
-        const { data: frontUrlData } = supabase.storage.from('aadhar').getPublicUrl(frontName);
-        const { data: backUrlData } = supabase.storage.from('aadhar').getPublicUrl(backName);
+        const { data: frontUrlData } = targetStorageClient.storage.from('aadhar').getPublicUrl(frontName);
+        const { data: backUrlData } = targetStorageClient.storage.from('aadhar').getPublicUrl(backName);
 
         const aadharFrontUrl = frontUrlData ? frontUrlData.publicUrl : null;
         const aadharBackUrl = backUrlData ? backUrlData.publicUrl : null;

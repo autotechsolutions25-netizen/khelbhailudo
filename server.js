@@ -182,32 +182,28 @@ app.post('/api/auth/send-otp', async (req, res) => {
         return res.status(400).json({ success: false, error: "Sahi 10-digit mobile number daalein!" });
     }
 
-    // 4-digit ka random secure OTP generate karein
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
     
-    // Fast2SMS configuration requirements setup
-    const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || "YOUR_COPIED_FAST2SMS_API_KEY"; // Apni key yahan daalein ya env me set karein
+    // 🔥 FIXED: Aapki Fast2SMS Authorization Key yahan paste ho gayi hai
+    const FAST2SMS_API_KEY = "8i6WxBF0QtHA5JjLMwCenrUVPG1vdfDg3yOEuco7aSYKh2Zz9TVs32AXuiwKSzJ5Mpf8YLd0WbN1RPIT"; 
 
     try {
         console.log(`Sending OTP ${generatedOtp} to mobile: ${mobile}`);
 
-        // Fast2SMS Quick SMS API Call routing
         const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
             params: {
                 authorization: FAST2SMS_API_KEY,
                 variables_values: generatedOtp,
-                route: 'otp', // Dedicated TRAI approved OTP route
+                route: 'otp', 
                 numbers: mobile
             }
         });
 
         if (response.data && response.data.return === true) {
-            // Memory store me OTP save karein 5 minute ke liye
             otpStore[mobile] = {
                 otp: generatedOtp,
-                expiresAt: Date.now() + 5 * 60 * 1000 // 5 Minutes Validity token
+                expiresAt: Date.now() + 5 * 60 * 1000 
             };
-
             return res.status(200).json({ success: true, message: "OTP mobile par bhej diya gaya hai!" });
         } else {
             console.error("Fast2SMS Rejection Payload:", response.data);

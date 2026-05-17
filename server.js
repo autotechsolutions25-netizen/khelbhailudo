@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -173,54 +174,81 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
 });
 
 
-// 2. SEND OTP via FAST2SMS (Existing Code - Don't Delete)
-app.post('/api/send-otp', async (req, res) => {
-    let { mobile } = req.body;
+// 1. ENDPOINT: SEND OTP VIA FAST2SMS
+app.post('/api/auth/send-otp', async (req, res) => {
+    const { mobile } = req.body;
+
+    if (!mobile || mobile.length < 10) {
+        return res.status(400).json({ success: false, error: "Sahi 10-digit mobile number daalein!" });
+    }
+
+    // 4-digit ka random secure OTP generate karein
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    // Fast2SMS configuration requirements setup
+    const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || "YOUR_COPIED_FAST2SMS_API_KEY"; // Apni key yahan daalein ya env me set karein
+
     try {
-        mobile = mobile.toString().replace(/\D/g, ""); 
-        if (mobile.length > 10) mobile = mobile.slice(-10);
-        const userRes = await pool.query('SELECT * FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
-        if (userRes.rows.length === 0) return res.status(404).json({ error: "Mobile registered nahi hai!" });
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        otpStore[mobile] = otp;
-        const fast2smsKey = 'CKhGw2uVQxU5JFlBv83OzftpL0ad1Nine6bHSqZRsAXrED4PIo9fvE5CBP3iFtm10IRwguX4qNMnlVjD'; 
-        const apiUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${fast2smsKey}&route=q&message=${encodeURIComponent('Aapka Khel Bhai Ludo OTP hai: ' + otp)}&language=english&flash=0&numbers=${mobile}`;
-        const response = await axios.get(apiUrl);
-        if (response.data.return) { res.json({ success: true, message: "OTP bhej diya gaya hai!" }); }
-        else { res.status(400).json({ error: response.data.message[0] || "SMS failed" }); }
-    } catch (err) { res.status(500).json({ error: "Service Busy" }); }
+        console.log(`Sending OTP ${generatedOtp} to mobile: ${mobile}`);
+
+        // Fast2SMS Quick SMS API Call routing
+        const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+            params: {
+                authorization: FAST2SMS_API_KEY,
+                variables_values: generatedOtp,
+                route: 'otp', // Dedicated TRAI approved OTP route
+                numbers: mobile
+            }
+        });
+
+        if (response.data && response.data.return === true) {
+            // Memory store me OTP save karein 5 minute ke liye
+            otpStore[mobile] = {
+                otp: generatedOtp,
+                expiresAt: Date.now() + 5 * 60 * 1000 // 5 Minutes Validity token
+            };
+
+            return res.status(200).json({ success: true, message: "OTP mobile par bhej diya gaya hai!" });
+        } else {
+            console.error("Fast2SMS Rejection Payload:", response.data);
+            return res.status(500).json({ success: false, error: "Gateway Error: SMS delivery failed." });
+        }
+
+    } catch (err) {
+        console.error("Fast2SMS Integration Crash:", err.message);
+        return res.status(500).json({ success: false, error: "Network Error: Failed to send SMS." });
+    }
 });
 
-// NEW ROUTE: Firebase OTP Verification Check
-app.post('/api/verify-login-firebase', async (req, res) => {
-    let { mobile } = req.body;
-    try {
-        // Mobile cleaning: Agar +91 hai toh hata do, sirf aakhri 10 digits lo
-        mobile = mobile.toString().replace(/\D/g, ""); 
-        if (mobile.length > 10) mobile = mobile.slice(-10);
+// 2. ENDPOINT: VERIFY OTP
+app.post('/api/auth/verify-otp', async (req, res) => {
+    const { mobile, otp } = req.body;
 
-        console.log("Checking DB for cleaned mobile:", mobile);
+    if (!mobile || !otp) {
+        return res.status(400).json({ success: false, error: "Mobile number aur OTP dono zaroori hain!" });
+    }
 
-        const userRes = await pool.query('SELECT id, terms_accepted, is_verified FROM users WHERE mobile_no LIKE $1', [`%${mobile}%`]);
+    const record = otpStore[mobile];
+
+    // Check agar memory me ye mobile data exists karta hai
+    if (!record) {
+        return res.status(400).json({ success: false, error: "Kripya pehle OTP request karein!" });
+    }
+
+    // Check agar OTP expire ho chuka hai
+    if (Date.now() > record.expiresAt) {
+        delete otpStore[mobile]; // Clean dead data token
+        return res.status(400).json({ success: false, error: "OTP expire ho gaya hai! Wapas bhein." });
+    }
+
+    // Strict value matching comparison verification check
+    if (record.otp === otp.trim()) {
+        // OTP verified! Memory block clear karein taaki reuse na ho sake
+        delete otpStore[mobile];
         
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ success: false, error: "Aap registered nahi hain!" });
-        }
-
-        const user = userRes.rows[0];
-        
-        if (!user.is_verified) {
-            return res.status(403).json({ success: false, error: "Account approval pending hai!" });
-        }
-
-        res.json({ 
-            success: true, 
-            userId: user.id, 
-            termsAccepted: user.terms_accepted 
-        });
-    } catch (err) {
-        console.error("Firebase Login Error:", err.message);
-        res.status(500).json({ success: false, error: "Server Error" });
+        return res.status(200).json({ success: true, message: "Mobile number verified successfully! 🎉" });
+    } else {
+        return res.status(400).json({ success: false, error: "Galat OTP daala hai, kripya check karein." });
     }
 });
 

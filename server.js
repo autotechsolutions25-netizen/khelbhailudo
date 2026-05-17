@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
+const cors = require('cors'); 
 require('dotenv').config();
 
 const app = express();
@@ -18,9 +19,14 @@ if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
 // Database Connection
 const pool = require('./db');
 
-const cors = require('cors'); // 1. CORS library ko import karein
+// --- SUPABASE CLIENT CRASH GUARD ---
+// Check karein agar supabase tumhare db.js ya upar imported hai, agar nahi toh initialization safety block:
+const { createClient } = require('@supabase/supabase-client');
+const supabaseUrl = process.env.SUPABASE_URL || "https://your-supabase-url.supabase.co"; // replace with your actual env or string if needed
+const supabaseKey = process.env.SUPABASE_KEY || "YOUR_SUPABASE_KEY";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 2. Updated CORS configurations to cleanly pass new domain traffic logs safely
+// CORS Multi-Origin configuration layer
 const allowedOrigins = [
     'https://autotechsolutions25-netizen.github.io',
     'https://khelbhailudo.com',
@@ -29,11 +35,10 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Local alignments aur absolute tracking matching elements pass execution
         if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost')) {
             callback(null, true);
         } else {
-            console.log("Blocked by CORS allocation from origin structure:", origin);
+            console.log("Blocked by CORS from origin structure:", origin);
             callback(new Error('Not allowed by CORS infrastructure'));
         }
     },
@@ -42,11 +47,10 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Dynamic Memory Cache State Block allocation for tracing internal Indian Gateway OTP elements
+// Dynamic Memory Cache Allocation for OTP tracking
 const otpStore = {}; 
 
 // --- DATABASE TABLES INITIALIZATION ---
-// Yeh block check karega ki tables hain ya nahi, nahi toh bana dega
 const initDB = async () => {
     try {
         await pool.query(`
@@ -77,103 +81,63 @@ const initDB = async () => {
 };
 initDB();
 
-// File Upload Configuration
-// --- MULTER STORAGE SETUP (Sirf ek baar rakhein) ---
+// Multer Memory Buffers setup
 const storage = multer.memoryStorage(); 
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit safety ke liye
+    limits: { fileSize: 5 * 1024 * 1024 } 
 });
 
-// ROUTES
+// --- ROUTES ---
 
-// 1. User Registration (Anti-Undefined Strict Cloud Stream Flow - Fully Fixed)
+// 1. User Registration (Strict Cloud Stream Flow)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {
     try {
         console.log("--- Supabase Storage Input Processing Layer ---");
         const { fullName, email, mobile, username, password, referred_by } = req.body;
         
-        // Anti-Crash Layer: Ensure file buffers exist properly
         if (!req.files || !req.files['aadharFront'] || !req.files['aadharBack']) {
             return res.status(400).json({ 
                 success: false, 
-                error: "Frontend Upload Error: Aadhaar Card images server tak nahi pahunchi. Please re-select files." 
+                error: "Frontend Upload Error: Aadhaar Card images server tak nahi pahunchi." 
             });
         }
 
         const frontFile = req.files['aadharFront'][0];
         const backFile = req.files['aadharBack'][0];
 
-        // Safe Filename Extraction Fallback (diskStorage aur memoryStorage dono ke liye pass hoga)
         const frontOriginalName = frontFile.filename || frontFile.originalname || `front_${Date.now()}`;
         const backOriginalName = backFile.filename || backFile.originalname || `back_${Date.now()}`;
 
-        if (!frontOriginalName || !backOriginalName || frontOriginalName.includes('undefined')) {
-            return res.status(400).json({ success: false, error: "Runtime Error: Uploaded filename token parsing mismatch." });
-        }
-
         const timestamp = Date.now();
         const frontName = `${timestamp}_front_${frontOriginalName.replace(/\s+/g, '_')}`;
-        const backName = `${timestamp}_back_${backFile.filename || backFile.originalname ? (backFile.filename || backFile.originalname).replace(/\s+/g, '_') : Date.now()}`;
+        const backName = `${timestamp}_back_${backOriginalName.replace(/\s+/g, '_')}`;
 
-        // Buffers dynamically allocate karein memory structure safe rakhne ke liye
-        let frontBuffer, backBuffer;
-        if (frontFile.path) {
-            frontBuffer = fs.readFileSync(frontFile.path);
-            backBuffer = fs.readFileSync(backFile.path);
-        } else if (frontFile.buffer) {
-            frontBuffer = frontFile.buffer;
-            backBuffer = backFile.buffer;
-        } else {
-            throw new Error("File structure binary data unreadable.");
-        }
+        let frontBuffer = frontFile.buffer;
+        let backBuffer = backFile.buffer;
 
-        // A. Upload Front Document with strict content types mapping
+        // Upload Front Document
         const { data: frontUpload, error: frontErr } = await supabase.storage
             .from('aadhar')
-            .upload(frontName, frontBuffer, {
-                contentType: frontFile.mimetype || 'image/jpeg',
-                upsert: true
-            });
+            .upload(frontName, frontBuffer, { contentType: frontFile.mimetype || 'image/jpeg', upsert: true });
 
         if (frontErr) throw new Error("Supabase Front Bucket Rejection: " + frontErr.message);
 
-        // B. Upload Back Document with strict content types mapping
+        // Upload Back Document
         const { data: backUpload, error: backErr } = await supabase.storage
             .from('aadhar')
-            .upload(backName, backBuffer, {
-                contentType: backFile.mimetype || 'image/jpeg',
-                upsert: true
-            });
+            .upload(backName, backBuffer, { contentType: backFile.mimetype || 'image/jpeg', upsert: true });
 
         if (backErr) throw new Error("Supabase Back Bucket Rejection: " + backErr.message);
 
-        // C. Fetch Public Links tracking explicit public path schema
         const { data: frontUrlData } = supabase.storage.from('aadhar').getPublicUrl(frontName);
         const { data: backUrlData } = supabase.storage.from('aadhar').getPublicUrl(backName);
 
         const aadharFrontUrl = frontUrlData ? frontUrlData.publicUrl : null;
         const aadharBackUrl = backUrlData ? backUrlData.publicUrl : null;
 
-        // Ultimate validation block to catch malformed endpoints before writing to database
-        if (!aadharFrontUrl || !aadharBackUrl || aadharFrontUrl.includes('undefined') || aadharBackUrl.includes('undefined')) {
-            throw new Error("Cloud Storage Sync Error: Public URL generated invalid parameters.");
-        }
-
-        // Clean temporary local files safely if disk storage strategy is active
-        if (frontFile.path) {
-            try {
-                fs.unlinkSync(frontFile.path);
-                fs.unlinkSync(backFile.path);
-                console.log("Temporary server space disk sweep completed.");
-            } catch (e) { 
-                console.log("Temporary file clear cycle skipped or file already removed."); 
-            }
-        }
-
         const parsedReferBy = referred_by && !isNaN(referred_by) ? parseInt(referred_by) : null;
 
-        // FIXED: Insertion status set to 'pending_login' so signup users don't pollute the KYC pending tab
         await pool.query(
             `INSERT INTO users (
                 full_name, email, mobile_no, username, password, 
@@ -182,17 +146,16 @@ app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack
             [fullName, email, mobile, username, password, aadharFrontUrl, aadharBackUrl, parsedReferBy]
         );
         
-        console.log(`Successfully registered user: ${username} with Supabase secure storage references.`);
         return res.status(200).json({ success: true, message: "Cloud registration successful!" });
 
     } catch (err) {
-        console.error("Critical Cloud Transaction Aborted:", err.message);
-        return res.status(500).json({ success: false, error: "Server Registration Failure: " + err.message });
+        console.error("Registration Failure:", err.message);
+        return res.status(500).json({ success: false, error: err.message });
     }
 });
 
 
-// 1. ENDPOINT: SEND OTP VIA FAST2SMS
+// 2. ENDPOINT: SEND OTP VIA FAST2SMS (Strict Anti-Crash Build)
 app.post('/api/auth/send-otp', async (req, res) => {
     const { mobile } = req.body;
 
@@ -201,40 +164,45 @@ app.post('/api/auth/send-otp', async (req, res) => {
     }
 
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    
-    // 🔥 FIXED: Aapki Fast2SMS Authorization Key yahan paste ho gayi hai
     const FAST2SMS_API_KEY = "8i6WxBF0QtHA5JjLMwCenrUVPG1vdfDg3yOEuco7aSYKh2Zz9TVs32AXuiwKSzJ5Mpf8YLd0WbN1RPIT"; 
 
     try {
-        console.log(`Sending OTP ${generatedOtp} to mobile: ${mobile}`);
+        console.log(`[Fast2SMS] Attempting to send OTP ${generatedOtp} to mobile: ${mobile}`);
 
+        // Safe API Call Structure
         const response = await axios.get('https://www.fast2sms.com/dev/bulkV2', {
             params: {
                 authorization: FAST2SMS_API_KEY,
                 variables_values: generatedOtp,
                 route: 'otp', 
                 numbers: mobile
-            }
+            },
+            timeout: 10000 // 10 second network fallback limit
         });
+
+        console.log("[Fast2SMS] Raw Gateway Callback Status:", response.data);
 
         if (response.data && response.data.return === true) {
             otpStore[mobile] = {
                 otp: generatedOtp,
-                expiresAt: Date.now() + 5 * 60 * 1000 
+                expiresAt: Date.now() + 5 * 60 * 1000 // 5 Mins Validity
             };
             return res.status(200).json({ success: true, message: "OTP mobile par bhej diya gaya hai!" });
         } else {
-            console.error("Fast2SMS Rejection Payload:", response.data);
-            return res.status(500).json({ success: false, error: "Gateway Error: SMS delivery failed." });
+            console.error("[Fast2SMS] Reject Trace:", response.data);
+            return res.status(400).json({ success: false, error: response.data.message || "Gateway registration limits error." });
         }
 
     } catch (err) {
-        console.error("Fast2SMS Integration Crash:", err.message);
-        return res.status(500).json({ success: false, error: "Network Error: Failed to send SMS." });
+        console.error("[Fast2SMS Network Crash Exception]:", err.message);
+        return res.status(500).json({ 
+            success: false, 
+            error: "SMS Gateway Server down hai ya API settings block hain. Error: " + err.message 
+        });
     }
 });
 
-// 2. ENDPOINT: VERIFY OTP
+// 3. ENDPOINT: VERIFY OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
     const { mobile, otp } = req.body;
 
@@ -244,22 +212,17 @@ app.post('/api/auth/verify-otp', async (req, res) => {
 
     const record = otpStore[mobile];
 
-    // Check agar memory me ye mobile data exists karta hai
     if (!record) {
         return res.status(400).json({ success: false, error: "Kripya pehle OTP request karein!" });
     }
 
-    // Check agar OTP expire ho chuka hai
     if (Date.now() > record.expiresAt) {
-        delete otpStore[mobile]; // Clean dead data token
+        delete otpStore[mobile];
         return res.status(400).json({ success: false, error: "OTP expire ho gaya hai! Wapas bhein." });
     }
 
-    // Strict value matching comparison verification check
     if (record.otp === otp.trim()) {
-        // OTP verified! Memory block clear karein taaki reuse na ho sake
         delete otpStore[mobile];
-        
         return res.status(200).json({ success: true, message: "Mobile number verified successfully! 🎉" });
     } else {
         return res.status(400).json({ success: false, error: "Galat OTP daala hai, kripya check karein." });

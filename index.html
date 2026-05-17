@@ -127,56 +127,43 @@ async function requestFast2SMS_OTP() {
     }
 }
 
-    // 2. FAST2SMS VERIFY & DIRECT PAYLOAD LOGIN 
-    async function verifyFast2SMS_Login() {
-        const otp = document.getElementById('loginOTP').value.trim();
-        const mobile = document.getElementById('loginMobile').value.trim();
-        const btn = document.getElementById('verifyBtn');
+// 2. FAST2SMS VERIFY & DIRECT PAYLOAD LOGIN
+async function verifyFast2SMS_Login() {
+    const otp = document.getElementById('loginOTP').value.trim();
+    const mobile = document.getElementById('loginMobile').value.trim();
+    const btn = document.getElementById('verifyBtn');
 
-        if(!otp) return alert("Kripya OTP daalein!");
+    if(!otp) return alert("Kripya OTP daalein!");
 
-        btn.disabled = true;
-        btn.innerText = "Verifying...";
+    btn.disabled = true;
+    btn.innerText = "Verifying...";
 
-        try {
-            // First step: Verification via Fast2SMS memory logs
-            const verifyRes = await fetch(`${API_BASE}/auth/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mobile: mobile, otp: otp })
-            });
+    try {
+        // Correctly hitting the unique combined verification endpoint
+        const response = await fetch(`${API_BASE}/auth/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile: mobile, otp: otp })
+        });
 
-            const verifyData = await verifyRes.json();
+        const data = await response.json();
 
-            if(verifyData.success) {
-                // Second step: Verification done, process immediate platform login authorization routing
-                const loginResponse = await fetch(`${API_BASE}/verify-login-firebase`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ mobile: mobile })
-                });
-
-                const data = await loginResponse.json();
-                if(data.success) {
-                    localStorage.setItem('userId', data.userId);
-                    window.location.href = data.termsAccepted ? "dashboard.html" : "term.html";
-                } else {
-                    alert(data.error);
-                    btn.disabled = false;
-                    btn.innerText = "Login";
-                }
-            } else {
-                alert(verifyData.error || "Galat OTP! Kripya check karein.");
-                btn.disabled = false;
-                btn.innerText = "Login";
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Network connection failure during transaction compilation.");
+        if(data.success) {
+            // Storage configuration and direct redirection map
+            localStorage.setItem('userId', data.userId);
+            window.location.href = data.termsAccepted ? "dashboard.html" : "term.html";
+        } else {
+            alert(data.error || "Galat OTP! Kripya check karein.");
             btn.disabled = false;
             btn.innerText = "Login";
         }
+    } catch (error) {
+        console.error(error);
+        alert("Network connection failure during transaction compilation.");
+        btn.disabled = false;
+        btn.innerText = "Login";
     }
+}
 
     // --- REGISTRATION LOGIC WITH REFER SYSTEM ---
     async function submitRegistration() {

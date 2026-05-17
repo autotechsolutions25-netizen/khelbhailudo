@@ -20,12 +20,30 @@ const pool = require('./db');
 
 const cors = require('cors'); // 1. CORS library ko import karein
 
-// 2. Isse allow karein (Ise app = express() ke turant baad likhna)
+// 2. Updated CORS configurations to cleanly pass new domain traffic logs safely
+const allowedOrigins = [
+    'https://autotechsolutions25-netizen.github.io',
+    'https://khelbhailudo.com',
+    'https://www.khelbhailudo.com'
+];
+
 app.use(cors({
-    origin: 'https://autotechsolutions25-netizen.github.io', // Sirf aapki site allow hogi
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: function (origin, callback) {
+        // Local alignments aur absolute tracking matching elements pass execution
+        if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost')) {
+            callback(null, true);
+        } else {
+            console.log("Blocked by CORS allocation from origin structure:", origin);
+            callback(new Error('Not allowed by CORS infrastructure'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Dynamic Memory Cache State Block allocation for tracing internal Indian Gateway OTP elements
+const otpStore = {}; 
 
 // --- DATABASE TABLES INITIALIZATION ---
 // Yeh block check karega ki tables hain ya nahi, nahi toh bana dega
@@ -42,6 +60,8 @@ const initDB = async () => {
                 aadhar_front_url TEXT,
                 aadhar_back_url TEXT,
                 is_verified BOOLEAN DEFAULT FALSE,
+                kyc_status TEXT DEFAULT 'pending_login',
+                referred_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS admin_settings (
@@ -66,8 +86,6 @@ const upload = multer({
 });
 
 // ROUTES
-
-
 
 // 1. User Registration (Anti-Undefined Strict Cloud Stream Flow - Fully Fixed)
 app.post('/api/register', upload.fields([{name:'aadharFront'}, {name:'aadharBack'}]), async (req, res) => {

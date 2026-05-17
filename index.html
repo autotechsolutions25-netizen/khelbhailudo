@@ -88,40 +88,44 @@
         }
     });
 
-    // 1. FAST2SMS REQUEST OTP (Completely replaced Firebase stream)
-    async function requestFast2SMS_OTP() {
-        const mobile = document.getElementById('loginMobile').value.trim();
-        const btn = document.getElementById('otpReqBtn');
+// 1. FAST2SMS REQUEST OTP (Updated with Smart Notification Alerts)
+async function requestFast2SMS_OTP() {
+    const mobile = document.getElementById('loginMobile').value.trim();
+    const btn = document.getElementById('otpReqBtn');
 
-        if(mobile.length < 10) return alert("Sahi 10-digit mobile number daalein!");
+    if(mobile.length < 10) return alert("Sahi 10-digit mobile number daalein!");
 
-        btn.disabled = true;
-        btn.innerText = "Sending SMS...";
+    btn.disabled = true;
+    btn.innerText = "Sending OTP...";
 
-        try {
-            const response = await fetch(`${API_BASE}/auth/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mobile: mobile })
-            });
+    try {
+        const response = await fetch(`${API_BASE}/auth/send-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile: mobile })
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (data.success) {
-                document.getElementById('mobileSection').style.display = 'none';
-                document.getElementById('otpSection').style.display = 'block';
-            } else {
-                alert("Error: " + data.error);
-                btn.disabled = false;
-                btn.innerText = "Send OTP";
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Server connection failed during OTP routing.");
+        if (data.success) {
+            // 🔥 CHRISITAN NOTIFICATION POPUP: User ko screen par hi OTP dikh jayega!
+            alert(`🔒 TESTING MODE OTP:\nAapka verification code hai: ${data.otp}`);
+            
+            // UI elements switch karein
+            document.getElementById('mobileSection').style.display = 'none';
+            document.getElementById('otpSection').style.display = 'block';
+        } else {
+            alert("Error: " + data.error);
             btn.disabled = false;
             btn.innerText = "Send OTP";
         }
+    } catch (error) {
+        console.error(error);
+        alert("Server connection failed during OTP routing.");
+        btn.disabled = false;
+        btn.innerText = "Send OTP";
     }
+}
 
     // 2. FAST2SMS VERIFY & DIRECT PAYLOAD LOGIN 
     async function verifyFast2SMS_Login() {

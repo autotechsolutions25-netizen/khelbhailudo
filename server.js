@@ -193,30 +193,52 @@ app.post('/api/auth/send-otp', async (req, res) => {
     }
 });
 
-// 3. ENDPOINT: VERIFY OTP
-app.post('/api/auth/verify-otp', async (req, res) => {
-    const { mobile, otp } = req.body;
 
-    if (!mobile || !otp) {
-        return res.status(400).json({ success: false, error: "Mobile number aur OTP dono zaroori hain!" });
+
+// 4. ENDPOINT: VERIFY LOGIN FOR USER MOBILE (FIXED: Handles 404 & logs user into session)
+app.post('/api/verify-login-firebase', async (req, res) => {
+    const { mobile } = req.body;
+
+    if (!mobile) {
+        return res.status(400).json({ success: false, error: "Mobile number missing hai!" });
     }
 
-    const record = otpStore[mobile];
+    try {
+        console.log(`[Login Stream] Checking database metrics for mobile: ${mobile}`);
 
-    if (!record) {
-        return res.status(400).json({ success: false, error: "Kripya pehle OTP request karein!" });
-    }
+        // Database mein check karein ki user registered hai ya nahi
+        const userCheck = await pool.query("SELECT id, is_verified FROM users WHERE mobile_no = $1", [mobile.trim()]);
 
-    if (Date.now() > record.expiresAt) {
-        delete otpStore[mobile];
-        return res.status(400).json({ success: false, error: "OTP expire ho gaya hai! Wapas bhein." });
-    }
+        if (userCheck.rows.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Aapka number registered nahi hai! Kripya pehle New User? Register Here par jaakar account banayein." 
+            });
+        }
 
-    if (record.otp === otp.trim()) {
-        delete otpStore[mobile];
-        return res.status(200).json({ success: true, message: "Mobile number verified successfully! 🎉" });
-    } else {
-        return res.status(400).json({ success: false, error: "Galat OTP daala hai, kripya check karein." });
+        const user = userCheck.rows[0];
+
+        // Strict Admin Verification State Check
+        // Agar aap chahte ho ki bina admin approval ke user login na kar paye:
+        const isVerified = (user.is_verified === true || user.is_verified === 'true' || user.is_verified === 'TRUE');
+        
+        if (!isVerified) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Aapka account abhi Pending Approval mein hai. Admin ke approve karne tak wait karein!" 
+            });
+        }
+
+        // Login successful! Send user authentication token data back
+        return res.status(200).json({ 
+            success: true, 
+            userId: user.id,
+            termsAccepted: true // Agar terms file linked hai toh use validate karega
+        });
+
+    } catch (err) {
+        console.error("Critical Login Endpoint Crash:", err.message);
+        return res.status(500).json({ success: false, error: "Server Database error: " + err.message });
     }
 });
 

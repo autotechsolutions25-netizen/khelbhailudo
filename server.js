@@ -21,10 +21,13 @@ const pool = require('./db');
 
 // --- SUPABASE CLIENT CRASH GUARD ---
 // Check karein agar supabase tumhare db.js ya upar imported hai, agar nahi toh initialization safety block:
-const { createClient } = require('@supabase/supabase-client');
-const supabaseUrl = process.env.SUPABASE_URL || "https://your-supabase-url.supabase.co"; // replace with your actual env or string if needed
+const { createClient: makeSupabaseClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL || "https://your-supabase-url.supabase.co"; // actual string bhi daal sakte ho agar env me dikkat ho
 const supabaseKey = process.env.SUPABASE_KEY || "YOUR_SUPABASE_KEY";
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Agar code me niche 'supabase' variable use ho raha hai, toh usi ko assign karenge bina re-declaration error ke
+const supabase = makeSupabaseClient(supabaseUrl, supabaseKey);
 
 // CORS Multi-Origin configuration layer
 const allowedOrigins = [

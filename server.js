@@ -761,9 +761,9 @@ app.post('/api/admin/login', (req, res) => {
 // 🔥 100% FIXED: Added P1 and P2 status/screenshot tracking columns in Selection Matrix
 app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
-        console.log("[Table Engine] Fetching dynamic rows for admin verification panel...");
+        console.log("[Table Engine] Fetching rows with safe schema layout...");
         
-        // FIXED: Status matching rules are now relaxed to catch any mismatched row elements safely
+        // FIXED QUERY: Sirf wahi columns hain jo tumhare battles table mein sach me hain!
         const result = await pool.query(`
             SELECT 
                 b.id, 
@@ -772,23 +772,17 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
                 b.joiner_id,
                 u1.username AS creator_name, 
                 u2.username AS joiner_name,
-                b.p1_status, 
-                b.p2_status, 
-                b.p1_screenshot, 
-                b.p2_screenshot,
-                b.screenshot_url,
-                b.result_status,
+                b.screenshot_url, -- Player 1 settings fallback
+                b.result_status,   -- P1 vs P2 claim status tracker
                 b.status
             FROM battles b
             LEFT JOIN users u1 ON b.creator_id = u1.id
             LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status = 'pending' 
-               OR b.result_status = 'pending' 
-               OR (b.p1_status IS NOT NULL AND b.p2_status IS NOT NULL AND b.status != 'completed')
+            WHERE b.status = 'pending' OR b.result_status = 'pending'
             ORDER BY b.id DESC
         `);
 
-        console.log(`[Table Engine] Successfully dispatched ${result.rows.length} rows to frontend.`);
+        console.log(`[Table Engine] Successfully dispatched ${result.rows.length} stable rows to frontend.`);
         res.status(200).json(result.rows);
     } catch (err) {
         console.error("Critical Table Row Dispatch Error:", err.message);
@@ -796,13 +790,12 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
     }
 });
 
-
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
         console.log("[Stats Engine] Synchronizing dashboard count metrics...");
         
-        // Count queries explicitly mapped to match the active table states exactly
         const usersCount = await pool.query("SELECT COUNT(*) FROM users");
+        // Real-schema validation logic mapping
         const battlesCount = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending' OR result_status = 'pending'");
         const withdrawCount = await pool.query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
         const kycCount = await pool.query("SELECT COUNT(*) FROM users WHERE is_verified = false OR kyc_status = 'pending'");

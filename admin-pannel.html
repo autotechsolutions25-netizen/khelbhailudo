@@ -236,39 +236,103 @@
             if(id === 'users') loadAdminUsers(); // FIXED: Removed loadAllUsers() here completely!
         }
 
+// 3. FIXED: Mapped Game Results to show distinct columns for Player 1 and Player 2 actions
         async function loadBattles() {
             const body = document.getElementById('battleListBody');
+            if (!body) return;
+
             try {
                 const res = await fetch(`${API_BASE}/admin/battles/pending-details`);
                 const data = await res.json();
-                body.innerHTML = data.length ? data.map(b => {
-                    const fullImg = b.screenshot_url ? b.screenshot_url.trim() : null;
+                
+                // Mapped Dynamic Table Header on the fly to support detailed splits
+                const tableHead = body.closest('table').querySelector('thead');
+                if (tableHead) {
+                    tableHead.innerHTML = `
+                        <tr>
+                            <th>ID</th>
+                            <th>Amount</th>
+                            <th style="background: rgba(59, 130, 246, 0.1); color: #1d4ed8;">Player 1 (Creator)</th>
+                            <th style="background: rgba(59, 130, 246, 0.1); color: #1d4ed8;">P1 Status/Proof</th>
+                            <th style="background: rgba(16, 185, 129, 0.1); color: #065f46;">Player 2 (Joiner)</th>
+                            <th style="background: rgba(16, 185, 129, 0.1); color: #065f46;">P2 Status/Proof</th>
+                            <th>Actions (Declare Winner)</th>
+                        </tr>
+                    `;
+                }
+
+                if (!data || data.length === 0) {
+                    body.innerHTML = '<tr><td colspan="7" align="center" style="padding: 20px; color: #64748b;">No pending game results to verify.</td></tr>';
+                    return;
+                }
+
+                body.innerHTML = data.map(b => {
+                    // --- PLAYER 1 (CREATOR) ANALYSIS ---
+                    let p1Html = '';
+                    // Check if player 1 submitted a lost status or explicit screenshot
+                    if (b.p1_status === 'lost' || b.result_status === 'lost') {
+                        p1Html = `<span style="color:#ef4444; font-weight:bold; background:#fee2e2; padding:4px 8px; border-radius:6px;"><i class="fas fa-times-circle"></i> LOST</span>`;
+                    } else if (b.p1_screenshot || b.screenshot_url) {
+                        const p1Img = (b.p1_screenshot || b.screenshot_url).trim();
+                        p1Html = `
+                            <div style="text-align:center;">
+                                <a href="${p1Img}" target="_blank" title="Click to expand">
+                                    <img src="${p1Img}" class="ss-img" style="border:2px solid #3b82f6; width:60px; height:80px; border-radius:4px; object-fit:cover;" 
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display:none; color:#3b82f6; font-size:11px; font-weight:bold;"><i class="fas fa-image"></i> View SS</span>
+                                </a>
+                            </div>`;
+                    } else {
+                        p1Html = `<span style="color:#f59e0b; font-weight:bold; background:#fef3c7; padding:4px 8px; border-radius:6px;"><i class="fas fa-clock"></i> PENDING</span>`;
+                    }
+
+                    // --- PLAYER 2 (JOINER) ANALYSIS ---
+                    let p2Html = '';
+                    // Check if player 2 submitted a lost status or explicit screenshot
+                    if (b.p2_status === 'lost') {
+                        p2Html = `<span style="color:#ef4444; font-weight:bold; background:#fee2e2; padding:4px 8px; border-radius:6px;"><i class="fas fa-times-circle"></i> LOST</span>`;
+                    } else if (b.p2_screenshot) {
+                        const p2Img = b.p2_screenshot.trim();
+                        p2Html = `
+                            <div style="text-align:center;">
+                                <a href="${p2Img}" target="_blank" title="Click to expand">
+                                    <img src="${p2Img}" class="ss-img" style="border:2px solid #10b981; width:60px; height:80px; border-radius:4px; object-fit:cover;" 
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display:none; color:#10b981; font-size:11px; font-weight:bold;"><i class="fas fa-image"></i> View SS</span>
+                                </a>
+                            </div>`;
+                    } else {
+                        p2Html = `<span style="color:#f59e0b; font-weight:bold; background:#fef3c7; padding:4px 8px; border-radius:6px;"><i class="fas fa-clock"></i> PENDING</span>`;
+                    }
+
                     return `
-                    <tr>
-                        <td>#${b.id}</td>
-                        <td>${b.creator_name} vs ${b.joiner_name}</td>
-                        <td>₹${b.amount}</td>
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="font-weight:bold; color:#475569;">#${b.id}</td>
+                        <td style="font-weight:bold; color:#059669; font-size:15px;">₹${b.amount}</td>
+                        
+                        <td style="font-weight:600; color:#1e293b; background: rgba(59, 130, 246, 0.02);">${b.creator_name || 'Player 1'}</td>
+                        <td style="background: rgba(59, 130, 246, 0.02);">${p1Html}</td>
+                        
+                        <td style="font-weight:600; color:#1e293b; background: rgba(16, 185, 129, 0.02);">${b.joiner_name || 'Player 2'}</td>
+                        <td style="background: rgba(16, 185, 129, 0.02);">${p2Html}</td>
+                        
                         <td>
-                            ${fullImg ? `
-                                <div style="text-align:center;">
-                                    <a href="${fullImg}" target="_blank">
-                                        <img src="${fullImg}" class="ss-img" style="border:1px solid #ccc; width:60px; height:80px;" 
-                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                        <span style="display:none; color:blue; font-size:10px;">Click to View</span>
-                                    </a>
-                                </div>
-                            ` : `<span style="color:red; font-size:10px;">No Proof</span>`}
-                        </td>
-                        <td style="color:blue; font-weight:bold;">${b.result_status || 'N/A'}</td>
-                        <td>
-                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.creator_id})">Winner P1</button>
-                            <button class="btn btn-success" onclick="approveWinner(${b.id}, ${b.joiner_id})">Winner P2</button>
+                            <button class="btn btn-success" style="background:#3b82f6; padding:6px 10px;" onclick="approveWinner(${b.id}, ${b.creator_id})">
+                                <i class="fas fa-trophy"></i> Winner P1
+                            </button>
+                            <button class="btn btn-success" style="background:#10b981; padding:6px 10px;" onclick="approveWinner(${b.id}, ${b.joiner_id})">
+                                <i class="fas fa-trophy"></i> Winner P2
+                            </button>
                         </td>
                     </tr>`;
-                }).join('') : '<tr><td colspan="6" align="center">No pending results.</td></tr>';
-            } catch (e) { console.error("Battles Load Error:", e); }
+                }).join('') : '<tr><td colspan="7" align="center">No pending results found.</td></tr>';
+            } catch (e) { 
+                console.error("Battles Load Error:", e); 
+                body.innerHTML = '<tr><td colspan="7" align="center" style="color:red; padding:20px;">Error loading data streams from server.</td></tr>';
+            }
         }
 
+        
         async function approveWinner(battleId, winnerId) {
             if(!confirm("Release payment?")) return;
             try {

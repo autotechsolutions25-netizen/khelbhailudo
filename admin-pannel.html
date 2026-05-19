@@ -239,7 +239,7 @@
         if(id === 'users') loadAdminUsers();
     }
 
-    // FIXED: Corrected mapping streams for side-by-side comparison matrix without any syntax collusions
+// 3. FIXED: Smart mapping to display data using your actual database structure safely
     async function loadBattles() {
         const body = document.getElementById('battleListBody');
         if (!body) return;
@@ -270,10 +270,15 @@
 
             body.innerHTML = data.map(b => {
                 let p1Html = '';
-                if (b.p1_status === 'lost' || b.result_status === 'lost') {
+                let p2Html = '';
+
+                // --- SMART MAPPING LOGIC ---
+                // Agar poore battle ka claim 'lost' hai, toh player 1 lost dikhayega
+                if (b.result_status === 'lost') {
                     p1Html = `<span style="color:#ef4444; font-weight:bold; background:#fee2e2; padding:4px 8px; border-radius:6px;"><i class="fas fa-times-circle"></i> LOST</span>`;
-                } else if (b.p1_screenshot || b.screenshot_url) {
-                    const p1Img = (b.p1_screenshot || b.screenshot_url).trim();
+                } else if (b.screenshot_url) {
+                    // Agar image available hai toh Player 1 ne upload ki hai
+                    const p1Img = b.screenshot_url.trim();
                     p1Html = `
                         <div style="text-align:center;">
                             <a href="${p1Img}" target="_blank" title="Click to expand">
@@ -286,11 +291,13 @@
                     p1Html = `<span style="color:#f59e0b; font-weight:bold; background:#fef3c7; padding:4px 8px; border-radius:6px;"><i class="fas fa-clock"></i> PENDING</span>`;
                 }
 
-                let p2Html = '';
-                if (b.p2_status === 'lost') {
+                // Player 2 check handler matrix tracking
+                // Agar result_status ke andar humein pata chalta hai ki player 2 ne lost kiya hai ya action status track ho raha hai:
+                if (b.result_status === 'p2_lost' || b.result_status === 'creator_win') {
                     p2Html = `<span style="color:#ef4444; font-weight:bold; background:#fee2e2; padding:4px 8px; border-radius:6px;"><i class="fas fa-times-circle"></i> LOST</span>`;
-                } else if (b.p2_screenshot) {
-                    const p2Img = b.p2_screenshot.trim();
+                } else if (b.result_status === 'joiner_win' && b.screenshot_url) {
+                    // Agar joiner ne win claim karke image dala hai, toh use P2 ki side show karenge
+                    const p2Img = b.screenshot_url.trim();
                     p2Html = `
                         <div style="text-align:center;">
                             <a href="${p2Img}" target="_blank" title="Click to expand">
@@ -300,6 +307,7 @@
                             </a>
                         </div>`;
                 } else {
+                    // Fallback state matches text content safely
                     p2Html = `<span style="color:#f59e0b; font-weight:bold; background:#fef3c7; padding:4px 8px; border-radius:6px;"><i class="fas fa-clock"></i> PENDING</span>`;
                 }
 
@@ -327,6 +335,7 @@
         }
     }
 
+       
     async function approveWinner(battleId, winnerId) {
         if(!confirm("Release payment?")) return;
         try {

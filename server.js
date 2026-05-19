@@ -761,9 +761,9 @@ app.post('/api/admin/login', (req, res) => {
 // 🔥 100% FIXED: Added P1 and P2 status/screenshot tracking columns in Selection Matrix
 app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
-        console.log("--- Fetching Complete Battle Records for Admin side Verification ---");
+        console.log("[Table Engine] Fetching dynamic rows for admin verification panel...");
         
-        // CRITICAL FIX: Explicitly select kiye hain saare columns (p1_status, p2_status, p1_screenshot, p2_screenshot)
+        // FIXED: Status matching rules are now relaxed to catch any mismatched row elements safely
         const result = await pool.query(`
             SELECT 
                 b.id, 
@@ -776,19 +776,22 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
                 b.p2_status, 
                 b.p1_screenshot, 
                 b.p2_screenshot,
-                b.screenshot_url, -- Safe legacy fallback backup column
-                b.result_status
+                b.screenshot_url,
+                b.result_status,
+                b.status
             FROM battles b
             LEFT JOIN users u1 ON b.creator_id = u1.id
             LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status = 'pending' OR b.kyc_status = 'pending' -- Check context if status column handles visibility
+            WHERE b.status = 'pending' 
+               OR b.result_status = 'pending' 
+               OR (b.p1_status IS NOT NULL AND b.p2_status IS NOT NULL AND b.status != 'completed')
             ORDER BY b.id DESC
         `);
 
-        console.log("Sample Data row dispatched to admin panel:", result.rows[0]);
+        console.log(`[Table Engine] Successfully dispatched ${result.rows.length} rows to frontend.`);
         res.status(200).json(result.rows);
     } catch (err) {
-        console.error("Critical Admin Pending Battles Select Query Crash:", err.message);
+        console.error("Critical Table Row Dispatch Error:", err.message);
         res.status(500).json([]);
     }
 });
@@ -796,23 +799,23 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
 
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
-        const users = await pool.query('SELECT COUNT(*) FROM users');
-        const kyc = await pool.query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
+        console.log("[Stats Engine] Synchronizing dashboard count metrics...");
         
-        // FIX: Ab hum 'transactions' table se withdrawal count nikalenge
-        const withdraw = await pool.query("SELECT COUNT(*) FROM transactions WHERE type = 'withdrawal' AND status = 'pending'");
-        
-        const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval'");
+        // Count queries explicitly mapped to match the active table states exactly
+        const usersCount = await pool.query("SELECT COUNT(*) FROM users");
+        const battlesCount = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending' OR result_status = 'pending'");
+        const withdrawCount = await pool.query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
+        const kycCount = await pool.query("SELECT COUNT(*) FROM users WHERE is_verified = false OR kyc_status = 'pending'");
 
-        res.json({
-            totalUsers: parseInt(users.rows[0].count),
-            pendingKyc: parseInt(kyc.rows[0].count),
-            pendingWithdrawals: parseInt(withdraw.rows[0].count),
-            pendingBattles: parseInt(battles.rows[0].count)
+        res.status(200).json({
+            totalUsers: parseInt(usersCount.rows[0].count) || 0,
+            pendingBattles: parseInt(battlesCount.rows[0].count) || 0,
+            pendingWithdrawals: parseInt(withdrawCount.rows[0].count) || 0,
+            pendingKyc: parseInt(kycCount.rows[0].count) || 0
         });
-    } catch (err) { 
-        console.error("Stats Error:", err.message);
-        res.status(500).json({ error: err.message }); 
+    } catch (err) {
+        console.error("Master Stats Synchronization Error:", err.message);
+        res.status(500).json({ totalUsers: 0, pendingBattles: 0, pendingWithdrawals: 0, pendingKyc: 0 });
     }
 });
 

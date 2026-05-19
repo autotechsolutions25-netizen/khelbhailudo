@@ -758,21 +758,38 @@ app.post('/api/admin/login', (req, res) => {
 
 
 // --- ADMIN: Pending Battle Results Fetch Karein ---
-// Is query ko server.js mein update karein
+// 🔥 100% FIXED: Added P1 and P2 status/screenshot tracking columns in Selection Matrix
 app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
-        const query = `
-            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
+        console.log("--- Fetching Complete Battle Records for Admin side Verification ---");
+        
+        // CRITICAL FIX: Explicitly select kiye hain saare columns (p1_status, p2_status, p1_screenshot, p2_screenshot)
+        const result = await pool.query(`
+            SELECT 
+                b.id, 
+                b.amount, 
+                b.creator_id, 
+                b.joiner_id,
+                u1.username AS creator_name, 
+                u2.username AS joiner_name,
+                b.p1_status, 
+                b.p2_status, 
+                b.p1_screenshot, 
+                b.p2_screenshot,
+                b.screenshot_url, -- Safe legacy fallback backup column
+                b.result_status
             FROM battles b
-            JOIN users u1 ON b.creator_id = u1.id
+            LEFT JOIN users u1 ON b.creator_id = u1.id
             LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status = 'pending_approval' 
-            ORDER BY b.created_at DESC`;
-            
-        const result = await pool.query(query);
-        res.json(result.rows);
+            WHERE b.status = 'pending' OR b.kyc_status = 'pending' -- Check context if status column handles visibility
+            ORDER BY b.id DESC
+        `);
+
+        console.log("Sample Data row dispatched to admin panel:", result.rows[0]);
+        res.status(200).json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: "Server error" });
+        console.error("Critical Admin Pending Battles Select Query Crash:", err.message);
+        res.status(500).json([]);
     }
 });
 

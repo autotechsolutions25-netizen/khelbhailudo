@@ -758,58 +758,44 @@ app.post('/api/admin/login', (req, res) => {
 
 
 // --- ADMIN: Pending Battle Results Fetch Karein ---
-// 🔥 100% FIXED: Added P1 and P2 status/screenshot tracking columns in Selection Matrix
+// Is query ko server.js mein update karein
 app.get('/api/admin/battles/pending-details', async (req, res) => {
     try {
-        console.log("[Table Engine] Fetching rows with safe schema layout...");
-        
-        // FIXED QUERY: Sirf wahi columns hain jo tumhare battles table mein sach me hain!
-        const result = await pool.query(`
-            SELECT 
-                b.id, 
-                b.amount, 
-                b.creator_id, 
-                b.joiner_id,
-                u1.username AS creator_name, 
-                u2.username AS joiner_name,
-                b.screenshot_url, -- Player 1 settings fallback
-                b.result_status,   -- P1 vs P2 claim status tracker
-                b.status
+        const query = `
+            SELECT b.*, u1.username as creator_name, u2.username as joiner_name 
             FROM battles b
-            LEFT JOIN users u1 ON b.creator_id = u1.id
+            JOIN users u1 ON b.creator_id = u1.id
             LEFT JOIN users u2 ON b.joiner_id = u2.id
-            WHERE b.status = 'pending' OR b.result_status = 'pending'
-            ORDER BY b.id DESC
-        `);
-
-        console.log(`[Table Engine] Successfully dispatched ${result.rows.length} stable rows to frontend.`);
-        res.status(200).json(result.rows);
+            WHERE b.status = 'pending_approval' 
+            ORDER BY b.created_at DESC`;
+            
+        const result = await pool.query(query);
+        res.json(result.rows);
     } catch (err) {
-        console.error("Critical Table Row Dispatch Error:", err.message);
-        res.status(500).json([]);
+        res.status(500).json({ error: "Server error" });
     }
 });
 
 
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
-        console.log("[Stats Engine] Synchronizing dashboard count metrics...");
+        const users = await pool.query('SELECT COUNT(*) FROM users');
+        const kyc = await pool.query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
         
-        const usersCount = await pool.query("SELECT COUNT(*) FROM users");
-        // Real-schema validation logic mapping
-        const battlesCount = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending' OR result_status = 'pending'");
-        const withdrawCount = await pool.query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
-        const kycCount = await pool.query("SELECT COUNT(*) FROM users WHERE is_verified = false OR kyc_status = 'pending'");
+        // FIX: Ab hum 'transactions' table se withdrawal count nikalenge
+        const withdraw = await pool.query("SELECT COUNT(*) FROM transactions WHERE type = 'withdrawal' AND status = 'pending'");
+        
+        const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval'");
 
-        res.status(200).json({
-            totalUsers: parseInt(usersCount.rows[0].count) || 0,
-            pendingBattles: parseInt(battlesCount.rows[0].count) || 0,
-            pendingWithdrawals: parseInt(withdrawCount.rows[0].count) || 0,
-            pendingKyc: parseInt(kycCount.rows[0].count) || 0
+        res.json({
+            totalUsers: parseInt(users.rows[0].count),
+            pendingKyc: parseInt(kyc.rows[0].count),
+            pendingWithdrawals: parseInt(withdraw.rows[0].count),
+            pendingBattles: parseInt(battles.rows[0].count)
         });
-    } catch (err) {
-        console.error("Master Stats Synchronization Error:", err.message);
-        res.status(500).json({ totalUsers: 0, pendingBattles: 0, pendingWithdrawals: 0, pendingKyc: 0 });
+    } catch (err) { 
+        console.error("Stats Error:", err.message);
+        res.status(500).json({ error: err.message }); 
     }
 });
 

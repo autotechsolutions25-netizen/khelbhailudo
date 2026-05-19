@@ -793,23 +793,23 @@ app.get('/api/admin/battles/pending-details', async (req, res) => {
 
 app.get('/api/admin/master-stats', async (req, res) => {
     try {
-        const users = await pool.query('SELECT COUNT(*) FROM users');
-        const kyc = await pool.query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
+        console.log("[Stats Engine] Synchronizing dashboard count metrics...");
         
-        // FIX: Ab hum 'transactions' table se withdrawal count nikalenge
-        const withdraw = await pool.query("SELECT COUNT(*) FROM transactions WHERE type = 'withdrawal' AND status = 'pending'");
-        
-        const battles = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending_approval'");
+        const usersCount = await pool.query("SELECT COUNT(*) FROM users");
+        // Real-schema validation logic mapping
+        const battlesCount = await pool.query("SELECT COUNT(*) FROM battles WHERE status = 'pending' OR result_status = 'pending'");
+        const withdrawCount = await pool.query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
+        const kycCount = await pool.query("SELECT COUNT(*) FROM users WHERE is_verified = false OR kyc_status = 'pending'");
 
-        res.json({
-            totalUsers: parseInt(users.rows[0].count),
-            pendingKyc: parseInt(kyc.rows[0].count),
-            pendingWithdrawals: parseInt(withdraw.rows[0].count),
-            pendingBattles: parseInt(battles.rows[0].count)
+        res.status(200).json({
+            totalUsers: parseInt(usersCount.rows[0].count) || 0,
+            pendingBattles: parseInt(battlesCount.rows[0].count) || 0,
+            pendingWithdrawals: parseInt(withdrawCount.rows[0].count) || 0,
+            pendingKyc: parseInt(kycCount.rows[0].count) || 0
         });
-    } catch (err) { 
-        console.error("Stats Error:", err.message);
-        res.status(500).json({ error: err.message }); 
+    } catch (err) {
+        console.error("Master Stats Synchronization Error:", err.message);
+        res.status(500).json({ totalUsers: 0, pendingBattles: 0, pendingWithdrawals: 0, pendingKyc: 0 });
     }
 });
 
